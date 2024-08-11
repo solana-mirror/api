@@ -1,0 +1,4 @@
+{
+  "rust-analyzer.trace.server": "verbose",
+  "editor.inlayHints.enabled": "offUnlessPressed"
+}
