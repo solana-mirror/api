@@ -24,3 +24,10 @@ pub struct Balance {
     pub amount: u64,
     pub formatted: f64,
 }
+
+#[derive(Default, Debug, Serialize)]
+pub struct ParsedMetadata {
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+}

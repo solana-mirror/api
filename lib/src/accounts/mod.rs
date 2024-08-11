@@ -9,7 +9,7 @@ use solana_client::{
 use solana_sdk::pubkey::Pubkey;
 use spl_token::id as spl_token_id;
 use std::str::FromStr;
-use types::{Balance, GetAccountsError, ParsedAta};
+use types::{Balance, GetAccountsError, ParsedAta, ParsedMetadata};
 
 pub mod types;
 
@@ -61,9 +61,7 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
     if let UiAccountData::Json(parsed_account) = account.account.data {
         let info = parsed_account.parsed["info"].as_object().unwrap();
 
-        let metadata = fetch_metadata(&info["mint"].as_str().unwrap())
-            .await
-            .unwrap();
+        let metadata = fetch_metadata(&info["mint"].as_str().unwrap()).await;
 
         let mint = clean_string(info["mint"].as_str().unwrap().to_string());
         let ata = account.pubkey.to_string();
@@ -81,9 +79,9 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
             ata,
             coingecko_id: None,
             decimals,
-            name: clean_string(metadata.name),
-            symbol: clean_string(metadata.symbol),
-            image: clean_string(metadata.uri),
+            name: metadata.name,
+            symbol: metadata.symbol,
+            image: metadata.uri,
             price: 1.23, // Add Jup
             balance: Balance { amount, formatted },
         });
@@ -95,7 +93,7 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
 /**
  * Fetches the metadata associated with the given mint address.
  */
-pub async fn fetch_metadata(mint_address: &str) -> Result<Metadata, ()> {
+pub async fn fetch_metadata(mint_address: &str) -> ParsedMetadata {
     let client = RpcClient::new(get_rpc());
 
     let mint_pubkey = Pubkey::from_str(mint_address).unwrap();
@@ -112,8 +110,25 @@ pub async fn fetch_metadata(mint_address: &str) -> Result<Metadata, ()> {
     )
     .0;
 
-    let account_data = client.get_account_data(&metadata_pubkey).await.unwrap();
-    let metadata = Metadata::safe_deserialize(&account_data).unwrap();
+    let account_data = client
+        .get_account_data(&metadata_pubkey)
+        .await
+        .unwrap_or_default();
 
-    Ok(metadata)
+    match Metadata::safe_deserialize(&account_data) {
+        Ok(metadata) => parse_metadata(metadata),
+        Err(_) => ParsedMetadata {
+            name: "".to_string(),
+            symbol: "".to_string(),
+            uri: "".to_string(),
+        },
+    }
+}
+
+fn parse_metadata(metadata: Metadata) -> ParsedMetadata {
+    ParsedMetadata {
+        name: clean_string(metadata.name),
+        symbol: clean_string(metadata.symbol),
+        uri: clean_string(metadata.uri),
+    }
 }
