@@ -117,14 +117,13 @@ pub async fn fetch_metadata(mint_address: &str) -> ParsedMetadata {
 
     match Metadata::safe_deserialize(&account_data) {
         Ok(metadata) => parse_metadata(metadata),
-        Err(_) => ParsedMetadata {
-            name: "".to_string(),
-            symbol: "".to_string(),
-            uri: "".to_string(),
-        },
+        Err(_) => ParsedMetadata::default(),
     }
 }
 
+/**
+ * Parses the given metadata.
+ */
 fn parse_metadata(metadata: Metadata) -> ParsedMetadata {
     ParsedMetadata {
         name: clean_string(metadata.name),
