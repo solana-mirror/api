@@ -1,16 +1,16 @@
 use crate::{
     coingecko::get_coingecko_id,
-    consts::USDC_ADDRESS,
+    consts::{SOL_ADDRESS, USDC_ADDRESS},
     price::get_price,
     utils::{clean_string, get_rpc},
 };
 use mpl_token_metadata::{accounts::Metadata, programs::MPL_TOKEN_METADATA_ID};
-use rocket::futures::stream::{self, StreamExt};
 use solana_account_decoder::UiAccountData;
 use solana_client::{
     nonblocking::rpc_client::RpcClient, rpc_request::TokenAccountsFilter,
     rpc_response::RpcKeyedAccount,
 };
+use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_sdk::pubkey::Pubkey;
 use spl_token::id as spl_token_id;
 use std::{collections::HashMap, str::FromStr};
@@ -20,18 +20,49 @@ pub mod types;
 
 /// Fetches the token accounts associated with the given address and parses them.
 pub async fn get_parsed_accounts(address: String) -> Result<Vec<ParsedAta>, GetAccountsError> {
-    let accounts = get_accounts(address).await?;
+    let accounts = get_accounts(&address).await?;
 
-    stream::iter(accounts)
-        .then(|acc| async { parse_account(acc).await })
-        .collect::<Vec<_>>()
-        .await
-        .into_iter()
-        .collect()
+    let mut parsed_accounts: Vec<ParsedAta> = Vec::new();
+
+    // Parsing the accounts and collecting the results
+    for account in accounts {
+        match parse_account(account).await {
+            Ok(parsed_account) => parsed_accounts.push(parsed_account),
+            Err(e) => return Err(e),
+        }
+    }
+
+    parsed_accounts.push(get_solana(&address).await);
+    Ok(parsed_accounts)
+}
+
+pub async fn get_solana(address: &str) -> ParsedAta {
+    let pubkey = &Pubkey::from_str(address).unwrap();
+    let price = get_price(
+        Pubkey::from_str(SOL_ADDRESS).unwrap(),
+        Pubkey::from_str(USDC_ADDRESS).unwrap(),
+    )
+    .await;
+
+    let client = RpcClient::new(get_rpc());
+    let amount = client.get_balance(pubkey).await.unwrap_or(0);
+    let formatted = amount as f64 / LAMPORTS_PER_SOL as f64;
+
+    ParsedAta {
+        mint: SOL_ADDRESS.to_string(),
+        ata: address.to_string(),
+        coingecko_id: Some("wrapped-solana".to_string()),
+        decimals: 9,
+        name: "Solana".to_string(),
+        symbol: "SOL".to_string(),
+        image: "https://cryptologos.cc/logos/solana-sol-logo.png?v=032".to_string(),
+        price,
+        balance: Balance { amount, formatted },
+    }
 }
 
 /// Fetches the token accounts associated with the given address.
-pub async fn get_accounts(address: String) -> Result<Vec<RpcKeyedAccount>, GetAccountsError> {
+pub async fn get_accounts(address: &str) -> Result<Vec<RpcKeyedAccount>, GetAccountsError> {
     let client = RpcClient::new(get_rpc());
     let pubkey = Pubkey::from_str(&address);
 
@@ -136,9 +167,14 @@ fn parse_metadata(metadata: Metadata) -> ParsedMetadata {
 /// Fetches the image for each account
 async fn fetch_image(metadata: &ParsedMetadata) -> String {
     let predefined_images = HashMap::from([
-        ("USDC", "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=032"),
-        ("SOL", "https://cryptologos.cc/logos/solana-sol-logo.png?v=032"),
-        ("RCL", "https://ipfs.io/ipfs/Qme9ErqmQaznzpfDACncEW48NyXJPFP7HgzfoNdto9xQ9P/02.jpg")
+        (
+            "USDC",
+            "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=032",
+        ),
+        (
+            "RCL",
+            "https://ipfs.io/ipfs/Qme9ErqmQaznzpfDACncEW48NyXJPFP7HgzfoNdto9xQ9P/02.jpg",
+        ),
     ]);
 
     if let Some(&url) = predefined_images.get(metadata.symbol.as_str()) {
