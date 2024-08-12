@@ -150,6 +150,5 @@ async fn fetch_image(metadata: &ParsedMetadata) -> String {
             return image_response.image;
         }
     }
-    eprintln!("Failed to fetch the image. Returning a default image.");
-    String::from("https://example.com/default-image.png")
+    String::default()
 }
