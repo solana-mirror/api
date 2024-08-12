@@ -1,4 +1,8 @@
-use crate::utils::{clean_string, get_rpc};
+use crate::{
+    consts::USDC_ADDRESS,
+    price::get_price,
+    utils::{clean_string, get_rpc},
+};
 use mpl_token_metadata::{accounts::Metadata, programs::MPL_TOKEN_METADATA_ID};
 use rocket::futures::stream::{self, StreamExt};
 use solana_account_decoder::UiAccountData;
@@ -13,25 +17,19 @@ use types::{Balance, GetAccountsError, ParsedAta, ParsedMetadata};
 
 pub mod types;
 
-/**
- * Fetches and parses the token accounts associated with the given address.
- */
+/// Fetches the token accounts associated with the given address and parses them.
 pub async fn get_parsed_accounts(address: String) -> Result<Vec<ParsedAta>, GetAccountsError> {
     let accounts = get_accounts(address).await?;
 
-    let parsed_accounts: Result<Vec<ParsedAta>, GetAccountsError> = stream::iter(accounts)
+    stream::iter(accounts)
         .then(|acc| async { parse_account(acc).await })
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .collect();
-
-    parsed_accounts
+        .collect()
 }
 
-/**
- * Fetches the token accounts associated with the given address.
- */
+/// Fetches the token accounts associated with the given address.
 pub async fn get_accounts(address: String) -> Result<Vec<RpcKeyedAccount>, GetAccountsError> {
     let client = RpcClient::new(get_rpc());
     let pubkey = Pubkey::from_str(&address);
@@ -54,9 +52,7 @@ pub async fn get_accounts(address: String) -> Result<Vec<RpcKeyedAccount>, GetAc
     }
 }
 
-/**
- * Parses the given token account.
- */
+/// Parses the given account.
 pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAccountsError> {
     if let UiAccountData::Json(parsed_account) = account.account.data {
         let info = parsed_account.parsed["info"].as_object().unwrap();
@@ -74,6 +70,10 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
             .unwrap();
         let formatted = info["tokenAmount"]["uiAmount"].as_f64().unwrap();
 
+        let mint_pubkey = Pubkey::from_str(&mint).unwrap();
+        let usdc_pubkey = Pubkey::from_str(USDC_ADDRESS).unwrap();
+        let price = get_price(mint_pubkey, usdc_pubkey).await;
+
         return Ok(ParsedAta {
             mint,
             ata,
@@ -82,7 +82,7 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
             name: metadata.name,
             symbol: metadata.symbol,
             image: metadata.uri,
-            price: 1.23, // Add Jup
+            price, // Add Jup
             balance: Balance { amount, formatted },
         });
     }
@@ -90,9 +90,7 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
     Err(GetAccountsError::ParseError)
 }
 
-/**
- * Fetches the metadata associated with the given mint address.
- */
+/// Fetches the metadata associated with the given mint address.
 pub async fn fetch_metadata(mint_address: &str) -> ParsedMetadata {
     let client = RpcClient::new(get_rpc());
 
@@ -121,9 +119,7 @@ pub async fn fetch_metadata(mint_address: &str) -> ParsedMetadata {
     }
 }
 
-/**
- * Parses the given metadata.
- */
+/// Parses the given metadata.
 fn parse_metadata(metadata: Metadata) -> ParsedMetadata {
     ParsedMetadata {
         name: clean_string(metadata.name),

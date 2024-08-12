@@ -16,4 +16,5 @@ num-bigint = "0.4.6"
 spl-token = "6.0.0"
 solana-account-decoder = "2.0.5"
 base64 = "0.22.1"
+jupiter-swap-api-client = "0.1.0"
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
