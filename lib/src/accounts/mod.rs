@@ -4,6 +4,7 @@ use crate::{
     price::get_price,
     utils::{clean_string, get_rpc},
 };
+use futures::future::join_all;
 use mpl_token_metadata::{accounts::Metadata, programs::MPL_TOKEN_METADATA_ID};
 use solana_account_decoder::UiAccountData;
 use solana_client::{
@@ -22,11 +23,12 @@ pub mod types;
 pub async fn get_parsed_accounts(address: String) -> Result<Vec<ParsedAta>, GetAccountsError> {
     let accounts = get_accounts(&address).await?;
 
-    let mut parsed_accounts: Vec<ParsedAta> = Vec::new();
+    let parse_futures = accounts.into_iter().map(|account| parse_account(account));
+    let parsed_results = join_all(parse_futures).await;
 
-    // Parsing the accounts and collecting the results
-    for account in accounts {
-        match parse_account(account).await {
+    let mut parsed_accounts: Vec<ParsedAta> = Vec::new();
+    for result in parsed_results {
+        match result {
             Ok(parsed_account) => parsed_accounts.push(parsed_account),
             Err(e) => return Err(e),
         }
@@ -36,6 +38,7 @@ pub async fn get_parsed_accounts(address: String) -> Result<Vec<ParsedAta>, GetA
     Ok(parsed_accounts)
 }
 
+/// Fetches the SOL account associated with the given address.
 pub async fn get_solana(address: &str) -> ParsedAta {
     let pubkey = &Pubkey::from_str(address).unwrap();
     let price = get_price(
