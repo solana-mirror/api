@@ -1,4 +1,5 @@
 use crate::{
+    coingecko::get_coingecko_id,
     consts::USDC_ADDRESS,
     price::get_price,
     utils::{clean_string, get_rpc},
@@ -74,15 +75,17 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
         let usdc_pubkey = Pubkey::from_str(USDC_ADDRESS).unwrap();
         let price = get_price(mint_pubkey, usdc_pubkey).await;
 
+        let coingecko_id = get_coingecko_id(&mint).await;
+
         return Ok(ParsedAta {
             mint,
             ata,
-            coingecko_id: None,
+            coingecko_id,
             decimals,
             name: metadata.name,
             symbol: metadata.symbol,
             image: metadata.uri,
-            price, // Add Jup
+            price,
             balance: Balance { amount, formatted },
         });
     }

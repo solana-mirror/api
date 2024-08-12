@@ -5,13 +5,13 @@ use solana_program::pubkey::Pubkey as ProgramPubkey;
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
 
-pub async fn get_price(token_a: Pubkey, token_b: Pubkey) -> f64 {
+pub async fn get_price(token_a: Pubkey, token_b: Pubkey) -> Option<f64> {
     let connection = RpcClient::new(get_rpc());
     let jupiter = JupiterSwapApiClient::new("https://quote-api.jup.ag/v6".to_string());
 
     // Using USDC as $, if it's comparing USDC to itself return 1
     if token_a.to_string() == token_b.to_string() {
-        return 1.0;
+        return Some(1.0);
     }
 
     let decimals_a = get_token_data(&connection, &token_a)
@@ -35,6 +35,11 @@ pub async fn get_price(token_a: Pubkey, token_b: Pubkey) -> f64 {
         ..QuoteRequest::default()
     };
 
-    let out_amount = jupiter.quote(&quote_request).await.unwrap().out_amount;
-    out_amount as f64 / 10_f64.powi(decimals_b as i32)
+    match jupiter.quote(&quote_request).await {
+        Ok(quote) => {
+            let price = quote.out_amount as f64 / 10_f64.powi(decimals_b as i32);
+            Some(price)
+        }
+        Err(_) => None,
+    }
 }

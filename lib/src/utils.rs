@@ -20,28 +20,3 @@ pub async fn get_token_data(connection: &RpcClient, token: &Pubkey) -> Option<Mi
         Err(_) => None,
     }
 }
-
-/*
- * /**
- * Gets the data of an address
- * @param connection
- * @param address
- */
-export async function getTokenData(connection: Connection, address: PublicKey) {
-    return (await connection.getParsedAccountInfo(address)).value
-        ?.data as ParsedAccountData
-}
-
-/**
- * Gets the ata for a token and returns its decimals
- * @param connection
- * @param address
- */
-export async function getDecimals(
-    connection: Connection,
-    address: PublicKey
-): Promise<number> {
-    const data = await getTokenData(connection, address)
-    return data.parsed.info.decimals
-}
-*/

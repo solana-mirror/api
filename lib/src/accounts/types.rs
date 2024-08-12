@@ -15,7 +15,7 @@ pub struct ParsedAta {
     pub name: String,
     pub symbol: String,
     pub image: String,
-    pub price: f64,
+    pub price: Option<f64>,
     pub balance: Balance,
 }
 
