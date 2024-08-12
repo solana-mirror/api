@@ -13,8 +13,8 @@ use solana_client::{
 };
 use solana_sdk::pubkey::Pubkey;
 use spl_token::id as spl_token_id;
-use std::str::FromStr;
-use types::{Balance, GetAccountsError, ParsedAta, ParsedMetadata};
+use std::{collections::HashMap, str::FromStr};
+use types::{Balance, GetAccountsError, ImageResponse, ParsedAta, ParsedMetadata};
 
 pub mod types;
 
@@ -77,6 +77,8 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
 
         let coingecko_id = get_coingecko_id(&mint).await;
 
+        let image = fetch_image(&metadata).await;
+
         return Ok(ParsedAta {
             mint,
             ata,
@@ -84,7 +86,7 @@ pub async fn parse_account(account: RpcKeyedAccount) -> Result<ParsedAta, GetAcc
             decimals,
             name: metadata.name,
             symbol: metadata.symbol,
-            image: metadata.uri,
+            image,
             price,
             balance: Balance { amount, formatted },
         });
@@ -129,4 +131,25 @@ fn parse_metadata(metadata: Metadata) -> ParsedMetadata {
         symbol: clean_string(metadata.symbol),
         uri: clean_string(metadata.uri),
     }
+}
+
+/// Fetches the image for each account
+async fn fetch_image(metadata: &ParsedMetadata) -> String {
+    let predefined_images = HashMap::from([
+        ("USDC", "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=032"),
+        ("SOL", "https://cryptologos.cc/logos/solana-sol-logo.png?v=032"),
+        ("RCL", "https://ipfs.io/ipfs/Qme9ErqmQaznzpfDACncEW48NyXJPFP7HgzfoNdto9xQ9P/02.jpg")
+    ]);
+
+    if let Some(&url) = predefined_images.get(metadata.symbol.as_str()) {
+        return url.to_string();
+    }
+
+    if let Ok(response) = reqwest::get(&metadata.uri).await {
+        if let Ok(image_response) = response.json::<ImageResponse>().await {
+            return image_response.image;
+        }
+    }
+    eprintln!("Failed to fetch the image. Returning a default image.");
+    String::from("https://example.com/default-image.png")
 }

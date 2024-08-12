@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub enum GetAccountsError {
     InvalidAddress,
@@ -30,4 +30,9 @@ pub struct ParsedMetadata {
     pub name: String,
     pub symbol: String,
     pub uri: String,
+}
+
+#[derive(Deserialize)]
+pub struct ImageResponse {
+    pub image: String,
 }

@@ -2012,6 +2012,7 @@ dependencies = [
  "jupiter-swap-api-client",
  "mpl-token-metadata",
  "num-bigint 0.4.6",
+ "reqwest",
  "rocket",
  "serde",
  "serde_json",
