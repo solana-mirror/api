@@ -1,6 +1,6 @@
-use lib::accounts::{
-    get_parsed_accounts,
-    types::{GetAccountsError, ParsedAta},
+use lib::{
+    accounts::{get_parsed_accounts, types::ParsedAta},
+    Error,
 };
 use rocket::{http::Status, serde::json::Json};
 
@@ -12,9 +12,9 @@ pub async fn accounts_handler(address: &str) -> Result<Json<Vec<ParsedAta>>, Sta
         Ok(parsed_accounts) => Ok(Json(parsed_accounts)),
         Err(err) => {
             let status_code = match err {
-                GetAccountsError::ParseError => Status::InternalServerError,
-                GetAccountsError::FetchError => Status::InternalServerError,
-                GetAccountsError::InvalidAddress => Status::BadRequest,
+                Error::ParseError => Status::InternalServerError,
+                Error::FetchError => Status::InternalServerError,
+                Error::InvalidAddress => Status::BadRequest,
             };
             Err(status_code)
         }

@@ -1,12 +1,5 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
-
-#[derive(Debug)]
-pub enum GetTransactionsError {
-    InvalidAddress,
-    FetchError,
-    ParseError,
-}
 
 /// Represents a formatted amount
 #[derive(Debug, Clone, Serialize, Deserialize)]

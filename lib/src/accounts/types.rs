@@ -1,11 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-pub enum GetAccountsError {
-    InvalidAddress,
-    FetchError,
-    ParseError,
-}
-
 #[derive(Default, Debug, Serialize)]
 pub struct ParsedAta {
     pub mint: String,
