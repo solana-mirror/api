@@ -1222,6 +1222,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dotenv"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+
+[[package]]
 name = "eager"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2009,6 +2015,7 @@ name = "lib"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "dotenv",
  "futures",
  "jupiter-swap-api-client",
  "mpl-token-metadata",
@@ -2023,6 +2030,7 @@ dependencies = [
  "solana-sdk 2.0.5",
  "solana-transaction-status",
  "spl-token",
+ "uuid",
 ]
 
 [[package]]
@@ -5382,6 +5390,15 @@ name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
+
+[[package]]
+name = "uuid"
+version = "1.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81dfa00651efa65069b0b6b651f4aaa31ba9e3c3ce0137aaad053604ee7e0314"
+dependencies = [
+ "getrandom 0.2.15",
+]
 
 [[package]]
 name = "valuable"
