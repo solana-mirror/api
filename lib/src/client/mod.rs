@@ -119,7 +119,10 @@ impl SolanaMirrorClient {
         let res = self.make_batch_request(&body).await?;
         match serde_json::from_value::<Vec<GetTransactionResponse>>(res) {
             Ok(res) => Ok(res),
-            Err(_) => Err(Error::ParseError),
+            Err(e) => {
+                println!("Error parsing JSON: {:?}", e);
+                Err(Error::ParseError)
+            }
         }
     }
 }
@@ -155,6 +158,9 @@ pub struct Instruction {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TransactionMessage {
+    #[serde(rename = "accountIndex")]
+    pub account_index: Option<u64>,
+    #[serde(rename = "accountKeys")]
     pub account_keys: Vec<String>,
     pub header: Header,
     pub instructions: Vec<Instruction>,
@@ -183,22 +189,36 @@ pub struct Meta {
     #[serde(rename = "postBalances")]
     pub post_balances: Vec<u64>,
     #[serde(rename = "postTokenBalances")]
-    pub post_token_balances: Vec<usize>,
+    pub post_token_balances: Vec<TokenBalance>,
     #[serde(rename = "preBalances")]
     pub pre_balances: Vec<u64>,
     #[serde(rename = "preTokenBalances")]
-    pub pre_token_balances: Vec<usize>,
+    pub pre_token_balances: Vec<TokenBalance>,
     pub rewards: Vec<Rewards>,
     /// Deprecated
     pub status: Value,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Transaction {
-    pub meta: Meta,
-    pub slot: u64,
-    pub transaction: Value,
-    pub version: u8,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UiTokenAmount {
+    pub amount: String,
+    pub decimals: u8,
+    #[serde(rename = "uiAmount")]
+    pub ui_amount: Option<f64>,
+    #[serde(rename = "uiAmountString")]
+    pub ui_amount_string: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenBalance {
+    #[serde(rename = "accountIndex")]
+    pub account_index: u64,
+    pub mint: String,
+    pub owner: String,
+    #[serde(rename = "programId")]
+    pub program_id: String,
+    #[serde(rename = "uiTokenAmount")]
+    pub ui_token_amount: UiTokenAmount,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -208,6 +228,21 @@ pub struct GetTransactionResponse {
     #[serde(rename = "blockTime")]
     pub block_time: Option<i64>,
     pub id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Version {
+    U8(u8),
+    String(String),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Transaction {
+    pub meta: Meta,
+    pub slot: u64,
+    pub transaction: InnerTransaction,
+    pub version: Option<Version>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

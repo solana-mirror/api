@@ -69,7 +69,7 @@ pub async fn get_parsed_transactions(
         )
         .await?;
 
-    println!("{:?}", txs);
+    println!("{:?}", txs.last());
 
     let transaction1 = ParsedTransaction {
         block_time: 1625097600,
