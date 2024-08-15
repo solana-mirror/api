@@ -1,93 +1,75 @@
-use solana_client::{
-    rpc_client::{GetConfirmedSignaturesForAddress2Config, RpcClient},
-    rpc_config::RpcTransactionConfig,
-};
-use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::Signature;
-use solana_transaction_status::EncodedConfirmedTransactionWithStatusMeta;
 use std::{collections::HashMap, str::FromStr};
 
 use crate::{
+    client::{GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient},
     transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction},
-    utils::get_rpc,
     Error,
 };
 
 pub mod types;
 
-fn get_signatures(connection: &RpcClient, address: &str) -> Result<Vec<String>, Error> {
-    let pubkey = Pubkey::from_str(&address);
-    let mut before: Option<Signature> = None;
+async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Vec<String>, Error> {
+    // Validate the address
+    Pubkey::from_str(address).map_err(|_| return Error::InvalidAddress)?;
+
+    let mut before: Option<String> = None;
     let mut should_continue: bool = true;
     let mut signatures: Vec<String> = Vec::new();
 
-    match pubkey {
-        Ok(pubkey) => {
-            while should_continue {
-                let raw_signatures = connection
-                    .get_signatures_for_address_with_config(
-                        &pubkey,
-                        GetConfirmedSignaturesForAddress2Config {
-                            before: before.clone(),
-                            until: None,
-                            limit: None,
-                            commitment: Some(CommitmentConfig::confirmed()),
-                        },
-                    )
-                    .unwrap_or([].to_vec());
+    while should_continue {
+        // Fetch the signatures for the address
+        let response = client
+            .get_signatures_for_address(
+                &address,
+                Some(GetSignaturesForAddressConfig {
+                    before: before.clone(),
+                    until: None,
+                    limit: None,
+                    commitment: Some("confirmed".to_string()),
+                }),
+            )
+            .await?;
 
-                if raw_signatures.is_empty() {
-                    should_continue = false;
-                } else {
-                    let mapped: Vec<String> =
-                        raw_signatures.iter().map(|x| x.signature.clone()).collect();
+        let raw_signatures = response.result;
 
-                    if let Some(last_signature) = mapped.last() {
-                        before = Some(Signature::from_str(last_signature).unwrap());
-                    }
+        if raw_signatures.is_empty() {
+            should_continue = false;
+        } else {
+            let mapped: Vec<String> = raw_signatures.iter().map(|x| x.signature.clone()).collect();
 
-                    signatures.extend(mapped);
-
-                    if raw_signatures.len() != 1000 {
-                        should_continue = false;
-                    }
-                }
+            if let Some(last_signature) = mapped.last() {
+                before = Some(last_signature.to_string());
             }
 
-            Ok(signatures)
+            signatures.extend(mapped);
+            if raw_signatures.len() < 1000 {
+                should_continue = false;
+            }
         }
-        Err(_) => Err(Error::InvalidAddress),
     }
+
+    Ok(signatures)
 }
 
-async fn get_confirmed_transaction(
-    connection: &RpcClient,
-    signature: &str,
-) -> Result<EncodedConfirmedTransactionWithStatusMeta, Error> {
-    let sign = Signature::from_str(signature).unwrap();
-    connection
-        .get_transaction_with_config(
-            &sign,
-            RpcTransactionConfig {
-                encoding: None,
-                commitment: None,
+pub async fn get_parsed_transactions(
+    client: &SolanaMirrorClient,
+    address: String,
+) -> Result<Vec<ParsedTransaction>, Error> {
+    let signatures = get_signatures(client, &address).await?;
+
+    let txs = client
+        .get_transactions(
+            signatures,
+            Some(GetTransactionConfig {
                 max_supported_transaction_version: Some(0),
-            },
+                commitment: None,
+                encoding: None,
+            }),
         )
-        .map_err(|_| Error::FetchError)
-}
+        .await?;
 
-pub async fn get_parsed_transactions(address: String) -> Result<Vec<ParsedTransaction>, Error> {
-    let connection = RpcClient::new(get_rpc());
-    let signatures = get_signatures(&connection, &address).unwrap();
-
-    // handle get_confirmed_transaction for all signatures
-    let transactions = get_confirmed_transaction(&connection, &signatures[0])
-        .await
-        .unwrap();
-
-    println!("{:?}", transactions);
+    println!("{:?}", txs);
 
     let transaction1 = ParsedTransaction {
         block_time: 1625097600,

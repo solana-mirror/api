@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod client;
 pub mod coingecko;
 pub mod price;
 pub mod transactions;
