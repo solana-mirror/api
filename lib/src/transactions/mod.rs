@@ -1,17 +1,58 @@
+use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_sdk::pubkey::Pubkey;
 use std::{collections::HashMap, str::FromStr};
 
 use crate::{
     client::{
-        GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient, Transaction,
+        GetSignaturesForAddressConfig, GetTransactionConfig, GetTransactionResponse,
+        SolanaMirrorClient, TokenBalance,
     },
     transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction},
     utils::create_batches,
-    Error,
+    Error, SOL_ADDRESS,
 };
 
 pub mod types;
 
+/// Get the parsed transactions for the given address
+pub async fn get_parsed_transactions(
+    client: &SolanaMirrorClient,
+    address: String,
+) -> Result<Vec<ParsedTransaction>, Error> {
+    let signatures = get_signatures(client, &address).await?;
+
+    let batches = create_batches(&signatures, 900, None);
+
+    let mut txs: Vec<GetTransactionResponse> = Vec::new();
+
+    for batch in batches {
+        let transactions: Vec<crate::client::GetTransactionResponse> = client
+            .get_transactions(
+                &batch,
+                Some(GetTransactionConfig {
+                    max_supported_transaction_version: Some(0),
+                    commitment: None,
+                    encoding: None,
+                }),
+            )
+            .await?;
+
+        txs.extend(transactions);
+    }
+
+    println!("{:?}", txs.len());
+
+    let parsed_transactions: Vec<ParsedTransaction> = txs
+        .iter()
+        .map(|tx| parse_transaction(tx, Pubkey::from_str(&address).unwrap()))
+        .filter_map(|x| x.ok())
+        .collect();
+
+    // return mocked data to avoid type errors
+    Ok(parsed_transactions)
+}
+
+/// Get the signatures for the given address
 async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Vec<String>, Error> {
     // Validate the address
     Pubkey::from_str(address).map_err(|_| return Error::InvalidAddress)?;
@@ -55,70 +96,103 @@ async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Ve
     Ok(signatures)
 }
 
-pub async fn get_parsed_transactions(
-    client: &SolanaMirrorClient,
-    address: String,
-) -> Result<Vec<ParsedTransaction>, Error> {
-    let signatures = get_signatures(client, &address).await?;
+/// Parse the transaction
+fn parse_transaction(
+    transaction: &GetTransactionResponse,
+    signer: Pubkey,
+) -> Result<ParsedTransaction, Error> {
+    let mut balances: HashMap<String, BalanceChange> = HashMap::new();
+    let tx = transaction.result.clone().unwrap();
 
-    let batches = create_batches(&signatures, 900, None);
+    let owner_idx = tx
+        .transaction
+        .message
+        .account_keys
+        .iter()
+        .position(|x| x.to_owned() == signer.to_string());
 
-    let mut txs: Vec<Transaction> = Vec::new();
+    match owner_idx {
+        Some(idx) => {
+            // Handle SOL
+            let pre_sol = tx.meta.pre_balances[idx];
+            let post_sol = tx.meta.post_balances[idx];
 
-    for batch in batches {
-        let transactions: Vec<crate::client::GetTransactionResponse> = client
-            .get_transactions(
-                &batch,
-                Some(GetTransactionConfig {
-                    max_supported_transaction_version: Some(0),
-                    commitment: None,
-                    encoding: None,
-                }),
-            )
-            .await?;
+            if pre_sol != post_sol {
+                balances.insert(
+                    SOL_ADDRESS.to_string(),
+                    BalanceChange {
+                        pre: FormattedAmount {
+                            amount: pre_sol,
+                            formatted: pre_sol as f64 / LAMPORTS_PER_SOL as f64,
+                        },
+                        post: FormattedAmount {
+                            amount: post_sol,
+                            formatted: post_sol as f64 / LAMPORTS_PER_SOL as f64,
+                        },
+                    },
+                );
+            }
 
-        txs.extend(transactions.iter().filter_map(|tx| tx.result.clone()));
+            // Handle SPL
+            let pre_token_balances: Vec<TokenBalance> = tx
+                .clone()
+                .meta
+                .pre_token_balances
+                .into_iter()
+                .filter(|x| x.owner == signer.to_string())
+                .collect();
+
+            let post_token_balances: Vec<TokenBalance> = tx
+                .clone()
+                .meta
+                .post_token_balances
+                .into_iter()
+                .filter(|x| x.owner == signer.to_string())
+                .collect();
+
+            for pre_balance in pre_token_balances {
+                if !balances.contains_key(pre_balance.mint.as_str()) {
+                    balances.insert(pre_balance.mint.to_string(), BalanceChange::default());
+                }
+
+                let balance_change = balances.get_mut(pre_balance.mint.as_str()).unwrap();
+                balance_change.pre = FormattedAmount {
+                    amount: pre_balance.ui_token_amount.amount.parse::<u64>().unwrap(),
+                    formatted: pre_balance.ui_token_amount.ui_amount.unwrap_or_default(),
+                };
+            }
+
+            for post_balance in post_token_balances {
+                if !balances.contains_key(post_balance.mint.as_str()) {
+                    balances.insert(post_balance.mint.to_string(), BalanceChange::default());
+                }
+
+                let balance_change = balances.get_mut(post_balance.mint.as_str()).unwrap();
+                balance_change.post = FormattedAmount {
+                    amount: post_balance.ui_token_amount.amount.parse::<u64>().unwrap(),
+                    formatted: post_balance.ui_token_amount.ui_amount.unwrap_or_default(),
+                };
+            }
+
+            // Handle ixs
+            let parsed_instructions: Vec<String> = tx
+                .meta
+                .log_messages
+                .clone()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|x| x.starts_with("Program log: Instruction: "))
+                .map(|x| x.replace("Program log: Instruction: ", ""))
+                .collect();
+
+            Ok(ParsedTransaction {
+                block_time: transaction.block_time.unwrap_or_default(),
+                signatures: tx.transaction.signatures,
+                logs: tx.meta.log_messages.unwrap_or_default(),
+                balances,
+                parsed_instructions,
+            })
+        }
+        None => return Err(Error::InvalidAddress),
     }
-
-    println!("{:?}", txs.len());
-
-    let transaction1 = ParsedTransaction {
-        block_time: 1625097600,
-        signatures: vec!["signature1".to_string(), "signature2".to_string()],
-        logs: vec!["log1".to_string(), "log2".to_string()],
-        balances: {
-            let mut balances = HashMap::new();
-            balances.insert(
-                "address1".to_string(),
-                BalanceChange {
-                    pre: FormattedAmount {
-                        amount: 1000,
-                        formatted: 10.0,
-                    },
-                    post: FormattedAmount {
-                        amount: 800,
-                        formatted: 8.0,
-                    },
-                },
-            );
-            balances.insert(
-                "address2".to_string(),
-                BalanceChange {
-                    pre: FormattedAmount {
-                        amount: 500,
-                        formatted: 5.0,
-                    },
-                    post: FormattedAmount {
-                        amount: 700,
-                        formatted: 7.0,
-                    },
-                },
-            );
-            balances
-        },
-        parsed_instructions: vec!["instruction1".to_string(), "instruction2".to_string()],
-    };
-
-    // return mocked data to avoid type errors
-    Ok(vec![transaction1])
 }
