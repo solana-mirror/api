@@ -100,7 +100,7 @@ impl SolanaMirrorClient {
 
     pub async fn get_transactions(
         &self,
-        signatures: Vec<String>,
+        signatures: &Vec<String>,
         config: Option<GetTransactionConfig>,
     ) -> Result<Vec<GetTransactionResponse>, Error> {
         let body: Vec<Request<GetTransactionParams>> = signatures
@@ -127,7 +127,7 @@ impl SolanaMirrorClient {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Rewards {
     pub pubkey: String,
     pub lamports: i64,
@@ -138,7 +138,7 @@ pub struct Rewards {
     pub commission: Option<u8>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Header {
     #[serde(rename = "numReadonlySignedAccounts")]
     pub num_readonly_signed_accounts: u8,
@@ -148,7 +148,7 @@ pub struct Header {
     pub num_required_signatures: u8,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Instruction {
     pub accounts: Vec<u8>,
     pub data: String,
@@ -156,7 +156,7 @@ pub struct Instruction {
     pub program_id_index: u8,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionMessage {
     #[serde(rename = "accountIndex")]
     pub account_index: Option<u64>,
@@ -168,13 +168,13 @@ pub struct TransactionMessage {
     pub recent_blockhash: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InnerTransaction {
     pub message: TransactionMessage,
     pub signatures: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Meta {
     #[serde(rename = "computeUnitsConsumed")]
     pub compute_units_consumed: u64,
@@ -199,7 +199,7 @@ pub struct Meta {
     pub status: Value,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UiTokenAmount {
     pub amount: String,
     pub decimals: u8,
@@ -209,7 +209,7 @@ pub struct UiTokenAmount {
     pub ui_amount_string: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TokenBalance {
     #[serde(rename = "accountIndex")]
     pub account_index: u64,
@@ -230,14 +230,14 @@ pub struct GetTransactionResponse {
     pub id: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Version {
     U8(u8),
     String(String),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Transaction {
     pub meta: Meta,
     pub slot: u64,

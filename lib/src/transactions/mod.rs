@@ -2,8 +2,11 @@ use solana_sdk::pubkey::Pubkey;
 use std::{collections::HashMap, str::FromStr};
 
 use crate::{
-    client::{GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient},
+    client::{
+        GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient, Transaction,
+    },
     transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction},
+    utils::create_batches,
     Error,
 };
 
@@ -58,18 +61,26 @@ pub async fn get_parsed_transactions(
 ) -> Result<Vec<ParsedTransaction>, Error> {
     let signatures = get_signatures(client, &address).await?;
 
-    let txs = client
-        .get_transactions(
-            signatures,
-            Some(GetTransactionConfig {
-                max_supported_transaction_version: Some(0),
-                commitment: None,
-                encoding: None,
-            }),
-        )
-        .await?;
+    let batches = create_batches(&signatures, 900, None);
 
-    println!("{:?}", txs.last());
+    let mut txs: Vec<Transaction> = Vec::new();
+
+    for batch in batches {
+        let transactions: Vec<crate::client::GetTransactionResponse> = client
+            .get_transactions(
+                &batch,
+                Some(GetTransactionConfig {
+                    max_supported_transaction_version: Some(0),
+                    commitment: None,
+                    encoding: None,
+                }),
+            )
+            .await?;
+
+        txs.extend(transactions.iter().filter_map(|tx| tx.result.clone()));
+    }
+
+    println!("{:?}", txs.len());
 
     let transaction1 = ParsedTransaction {
         block_time: 1625097600,
