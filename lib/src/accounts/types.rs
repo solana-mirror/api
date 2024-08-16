@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct ParsedAta {
     pub mint: String,
     pub ata: String,
+    #[serde(rename = "coingeckoId")]
     pub coingecko_id: Option<String>,
     pub decimals: u64,
     pub name: String,
