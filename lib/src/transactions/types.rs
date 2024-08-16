@@ -20,7 +20,6 @@ pub struct BalanceChange {
 pub struct ParsedTransaction {
     pub block_time: i64,
     pub signatures: Vec<String>,
-    pub logs: Vec<String>,
     pub balances: HashMap<String, BalanceChange>,
     pub parsed_instructions: Vec<String>,
 }

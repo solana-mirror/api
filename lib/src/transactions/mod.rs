@@ -188,7 +188,6 @@ fn parse_transaction(
             Ok(ParsedTransaction {
                 block_time: transaction.block_time.unwrap_or_default(),
                 signatures: tx.transaction.signatures,
-                logs: tx.meta.log_messages.unwrap_or_default(),
                 balances,
                 parsed_instructions,
             })
