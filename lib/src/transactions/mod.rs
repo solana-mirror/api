@@ -2,17 +2,17 @@ use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_sdk::pubkey::Pubkey;
 use std::{collections::HashMap, str::FromStr};
 
+pub mod types;
+
 use crate::{
     client::{
-        GetSignaturesForAddressConfig, GetTransactionConfig, GetTransactionResponse,
-        SolanaMirrorClient, TokenBalance,
+        types::TokenBalance, GetSignaturesForAddressConfig, GetTransactionConfig,
+        GetTransactionResponse, SolanaMirrorClient,
     },
     transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction},
     utils::create_batches,
     Error, SOL_ADDRESS,
 };
-
-pub mod types;
 
 /// Get the parsed transactions for the given address
 pub async fn get_parsed_transactions(
@@ -26,7 +26,7 @@ pub async fn get_parsed_transactions(
     let mut txs: Vec<GetTransactionResponse> = Vec::new();
 
     for batch in batches {
-        let transactions: Vec<crate::client::GetTransactionResponse> = client
+        let transactions: Vec<GetTransactionResponse> = client
             .get_transactions(
                 &batch,
                 Some(GetTransactionConfig {
@@ -40,19 +40,15 @@ pub async fn get_parsed_transactions(
         txs.extend(transactions);
     }
 
-    println!("{:?}", txs.len());
-
     let parsed_transactions: Vec<ParsedTransaction> = txs
         .iter()
         .map(|tx| parse_transaction(tx, Pubkey::from_str(&address).unwrap()))
         .filter_map(|x| x.ok())
         .collect();
 
-    // return mocked data to avoid type errors
     Ok(parsed_transactions)
 }
 
-/// Get the signatures for the given address
 async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Vec<String>, Error> {
     // Validate the address
     Pubkey::from_str(address).map_err(|_| return Error::InvalidAddress)?;
@@ -62,7 +58,6 @@ async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Ve
     let mut signatures: Vec<String> = Vec::new();
 
     while should_continue {
-        // Fetch the signatures for the address
         let response = client
             .get_signatures_for_address(
                 &address,
@@ -96,7 +91,6 @@ async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Ve
     Ok(signatures)
 }
 
-/// Parse the transaction
 fn parse_transaction(
     transaction: &GetTransactionResponse,
     signer: Pubkey,
@@ -186,7 +180,7 @@ fn parse_transaction(
                 .collect();
 
             Ok(ParsedTransaction {
-                block_time: transaction.block_time.unwrap_or_default(),
+                block_time: tx.block_time.unwrap_or_default(),
                 signatures: tx.transaction.signatures,
                 balances,
                 parsed_instructions,
