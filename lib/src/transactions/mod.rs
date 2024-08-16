@@ -6,8 +6,8 @@ pub mod types;
 
 use crate::{
     client::{
-        types::TokenBalance, GetSignaturesForAddressConfig, GetTransactionConfig,
-        GetTransactionResponse, SolanaMirrorClient,
+        types::{TokenBalance, Transaction},
+        GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient,
     },
     transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction},
     utils::create_batches,
@@ -20,13 +20,11 @@ pub async fn get_parsed_transactions(
     address: String,
 ) -> Result<Vec<ParsedTransaction>, Error> {
     let signatures = get_signatures(client, &address).await?;
-
     let batches = create_batches(&signatures, 900, None);
-
-    let mut txs: Vec<GetTransactionResponse> = Vec::new();
+    let mut txs: Vec<Transaction> = Vec::new();
 
     for batch in batches {
-        let transactions: Vec<GetTransactionResponse> = client
+        let transactions: Vec<crate::client::GetTransactionResponse> = client
             .get_transactions(
                 &batch,
                 Some(GetTransactionConfig {
@@ -37,7 +35,7 @@ pub async fn get_parsed_transactions(
             )
             .await?;
 
-        txs.extend(transactions);
+        txs.extend(transactions.iter().filter_map(|tx| tx.result.clone()));
     }
 
     let parsed_transactions: Vec<ParsedTransaction> = txs
@@ -91,12 +89,8 @@ async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Ve
     Ok(signatures)
 }
 
-fn parse_transaction(
-    transaction: &GetTransactionResponse,
-    signer: Pubkey,
-) -> Result<ParsedTransaction, Error> {
+fn parse_transaction(tx: &Transaction, signer: Pubkey) -> Result<ParsedTransaction, Error> {
     let mut balances: HashMap<String, BalanceChange> = HashMap::new();
-    let tx = transaction.result.clone().unwrap();
 
     let owner_idx = match tx
         .transaction
@@ -131,6 +125,7 @@ fn parse_transaction(
 
     // Handle SPL
     let pre_token_balances: Vec<TokenBalance> = tx
+        .clone()
         .meta
         .pre_token_balances
         .into_iter()
@@ -138,6 +133,7 @@ fn parse_transaction(
         .collect();
 
     let post_token_balances: Vec<TokenBalance> = tx
+        .clone()
         .meta
         .post_token_balances
         .into_iter()
@@ -181,7 +177,7 @@ fn parse_transaction(
 
     Ok(ParsedTransaction {
         block_time: tx.block_time.unwrap_or_default(),
-        signatures: tx.transaction.signatures,
+        signatures: tx.transaction.clone().signatures,
         balances,
         parsed_instructions,
     })
