@@ -3,7 +3,6 @@ use reqwest::Client;
 use serde::{self, Deserialize, Serialize};
 use serde_json::Value;
 use solana_sdk::pubkey::Pubkey;
-use std::str::FromStr;
 use types::{Signature, Transaction};
 use uuid::Uuid;
 
@@ -151,12 +150,9 @@ impl SolanaMirrorClient {
 
     pub async fn get_signatures_for_address(
         &self,
-        address: &str,
+        address: &Pubkey,
         config: Option<GetSignaturesForAddressConfig>,
     ) -> Result<GetSignaturesForAddressResponse, Error> {
-        // Validate address
-        let _pubkey = Pubkey::from_str(&address).map_err(|_| return Error::InvalidAddress)?;
-
         let params: GetSignaturesForAddressParams = (address.to_string(), config);
         let body = &Request {
             jsonrpc: "2.0".to_string(),

@@ -9,7 +9,8 @@ fn rocket() -> _ {
         "/",
         routes![
             routes::accounts::accounts_handler,
-            routes::transactions::transactions_handler
+            routes::transactions::transactions_handler,
+            routes::chart::chart_handler
         ],
     )
 }

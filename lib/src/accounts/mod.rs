@@ -1,8 +1,6 @@
 use crate::{
-    coingecko::get_coingecko_id,
-    price::get_price,
-    utils::{clean_string, get_rpc},
-    Error, SOL_ADDRESS, USDC_ADDRESS,
+    coingecko::get_coingecko_id, price::get_price, utils::clean_string, Error, SOL_ADDRESS,
+    USDC_ADDRESS,
 };
 use futures::future::join_all;
 use mpl_token_metadata::{accounts::Metadata, programs::MPL_TOKEN_METADATA_ID};
@@ -20,13 +18,15 @@ use types::{Balance, ImageResponse, ParsedAta, ParsedMetadata};
 pub mod types;
 
 /// Fetches the token accounts associated with the given address and parses them.
-pub async fn get_parsed_accounts(address: String) -> Result<Vec<ParsedAta>, Error> {
-    let client = RpcClient::new(get_rpc());
-    let accounts = get_accounts(&client, &address).await?;
+pub async fn get_parsed_accounts(
+    client: &RpcClient,
+    address: &Pubkey,
+) -> Result<Vec<ParsedAta>, Error> {
+    let accounts = get_accounts(client, address).await?;
 
     let parse_futures = accounts
         .into_iter()
-        .map(|account| parse_account(&client, account));
+        .map(|account| parse_account(client, account));
     let parsed_results = join_all(parse_futures).await;
 
     let mut parsed_accounts: Vec<ParsedAta> = Vec::new();
@@ -37,13 +37,12 @@ pub async fn get_parsed_accounts(address: String) -> Result<Vec<ParsedAta>, Erro
         }
     }
 
-    parsed_accounts.push(get_solana(&client, &address).await);
+    parsed_accounts.push(get_solana(client, address).await);
     Ok(parsed_accounts)
 }
 
 /// Fetches the SOL account associated with the given address.
-pub async fn get_solana(client: &RpcClient, address: &str) -> ParsedAta {
-    let pubkey = &Pubkey::from_str(address).unwrap();
+pub async fn get_solana(client: &RpcClient, pubkey: &Pubkey) -> ParsedAta {
     let price = get_price(
         Pubkey::from_str(SOL_ADDRESS).unwrap(),
         Pubkey::from_str(USDC_ADDRESS).unwrap(),
@@ -55,7 +54,7 @@ pub async fn get_solana(client: &RpcClient, address: &str) -> ParsedAta {
 
     ParsedAta {
         mint: SOL_ADDRESS.to_string(),
-        ata: address.to_string(),
+        ata: pubkey.to_string(),
         coingecko_id: Some("wrapped-solana".to_string()),
         decimals: 9,
         name: "Solana".to_string(),
@@ -69,25 +68,15 @@ pub async fn get_solana(client: &RpcClient, address: &str) -> ParsedAta {
 /// Fetches the token accounts associated with the given address.
 pub async fn get_accounts(
     client: &RpcClient,
-    address: &str,
+    pubkey: &Pubkey,
 ) -> Result<Vec<RpcKeyedAccount>, Error> {
-    let pubkey = Pubkey::from_str(&address);
+    let accounts = client
+        .get_token_accounts_by_owner(&pubkey, TokenAccountsFilter::ProgramId(spl_token_id()))
+        .await;
 
-    match pubkey {
-        Ok(pubkey) => {
-            let accounts = client
-                .get_token_accounts_by_owner(
-                    &pubkey,
-                    TokenAccountsFilter::ProgramId(spl_token_id()),
-                )
-                .await;
-
-            match accounts {
-                Ok(accounts) => Ok(accounts),
-                Err(_) => Err(Error::FetchError),
-            }
-        }
-        Err(_) => Err(Error::InvalidAddress),
+    match accounts {
+        Ok(accounts) => Ok(accounts),
+        Err(_) => Err(Error::FetchError),
     }
 }
 

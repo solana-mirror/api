@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod chart;
 pub mod client;
 pub mod coingecko;
 pub mod price;
@@ -11,6 +12,7 @@ pub const SOL_ADDRESS: &str = "So11111111111111111111111111111111111111112";
 #[derive(Debug)]
 pub enum Error {
     InvalidAddress,
+    InvalidTimeframe,
     FetchError,
     ParseError,
 }

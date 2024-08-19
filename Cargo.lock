@@ -3843,6 +3843,8 @@ dependencies = [
  "rocket",
  "serde",
  "serde_json",
+ "solana-client",
+ "solana-sdk 2.0.5",
  "spl-token",
  "tokio",
 ]

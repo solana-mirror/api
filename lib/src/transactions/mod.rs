@@ -1,6 +1,6 @@
 use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_sdk::pubkey::Pubkey;
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 pub mod types;
 
@@ -17,9 +17,9 @@ use crate::{
 /// Get the parsed transactions for the given address
 pub async fn get_parsed_transactions(
     client: &SolanaMirrorClient,
-    address: String,
+    pubkey: &Pubkey,
 ) -> Result<Vec<ParsedTransaction>, Error> {
-    let signatures = get_signatures(client, &address).await?;
+    let signatures = get_signatures(client, pubkey).await?;
     let batches = create_batches(&signatures, 900, None);
     let mut txs: Vec<Transaction> = Vec::new();
 
@@ -38,19 +38,20 @@ pub async fn get_parsed_transactions(
         txs.extend(transactions.iter().filter_map(|tx| tx.result.clone()));
     }
 
-    let parsed_transactions: Vec<ParsedTransaction> = txs
+    let mut parsed_transactions: Vec<ParsedTransaction> = txs
         .iter()
-        .map(|tx| parse_transaction(tx, Pubkey::from_str(&address).unwrap()))
+        .map(|tx| parse_transaction(tx, pubkey))
         .filter_map(|x| x.ok())
-        .collect();
+        .collect::<Vec<ParsedTransaction>>();
+    parsed_transactions.sort_by_key(|x| x.block_time);
 
     Ok(parsed_transactions)
 }
 
-async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Vec<String>, Error> {
-    // Validate the address
-    Pubkey::from_str(address).map_err(|_| return Error::InvalidAddress)?;
-
+async fn get_signatures(
+    client: &SolanaMirrorClient,
+    pubkey: &Pubkey,
+) -> Result<Vec<String>, Error> {
     let mut before: Option<String> = None;
     let mut should_continue: bool = true;
     let mut signatures: Vec<String> = Vec::new();
@@ -58,7 +59,7 @@ async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Ve
     while should_continue {
         let response = client
             .get_signatures_for_address(
-                &address,
+                pubkey,
                 Some(GetSignaturesForAddressConfig {
                     before: before.clone(),
                     until: None,
@@ -89,7 +90,7 @@ async fn get_signatures(client: &SolanaMirrorClient, address: &str) -> Result<Ve
     Ok(signatures)
 }
 
-fn parse_transaction(tx: &Transaction, signer: Pubkey) -> Result<ParsedTransaction, Error> {
+fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransaction, Error> {
     let mut balances: HashMap<String, BalanceChange> = HashMap::new();
 
     let owner_idx = match tx

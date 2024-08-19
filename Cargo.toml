@@ -17,3 +17,5 @@ num-bigint = "0.4.6"
 spl-token = "6.0.0"
 base64 = "0.22.1"
 lib = { path = "./lib" }
+solana-sdk = "2.0.5"
+solana-client = "2.0"
