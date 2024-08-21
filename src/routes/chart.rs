@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use lib::{
-    chart::{get_chart_data, types::ChartData, Timeframe},
+    chart::{get_chart_data, get_price_states, types::ChartDataWithPrice, Timeframe},
     client::SolanaMirrorClient,
     utils::get_rpc,
     Error::{FetchError, InvalidAddress, InvalidTimeframe, ParseError},
@@ -10,7 +10,10 @@ use rocket::{http::Status, serde::json::Json};
 use spl_token::solana_program::pubkey::Pubkey;
 
 #[get("/chart/<address>/<timeframe>")]
-pub async fn chart_handler(address: &str, timeframe: &str) -> Result<Json<Vec<ChartData>>, Status> {
+pub async fn chart_handler(
+    address: &str,
+    timeframe: &str,
+) -> Result<Json<Vec<ChartDataWithPrice>>, Status> {
     let timeframe_str = &timeframe[timeframe.len() - 1..];
     let parsed_timeframe = match Timeframe::from_str(timeframe_str) {
         Some(parsed_timeframe) => parsed_timeframe,
@@ -34,8 +37,9 @@ pub async fn chart_handler(address: &str, timeframe: &str) -> Result<Json<Vec<Ch
 
     let client = SolanaMirrorClient::new(get_rpc());
     let chart_data = get_chart_data(&client, &pubkey, parsed_timeframe, range).await;
+    let chart_data_with_price = get_price_states(chart_data.unwrap()).await;
 
-    match chart_data {
+    match chart_data_with_price {
         Ok(data) => Ok(Json(data)),
         Err(err) => {
             let status_code = match err {

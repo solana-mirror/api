@@ -1,8 +1,11 @@
 use dotenv::dotenv;
+use serde_json::Value;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{program_pack::Pack, pubkey::Pubkey};
 use spl_token::state::Mint;
 use std::env;
+
+use crate::client::JsonRpcError;
 
 pub fn clean_string(s: String) -> String {
     s.trim_matches('\0').trim_matches('"').to_string()
@@ -50,4 +53,11 @@ pub fn create_batches<T: Clone>(
     }
 
     batches
+}
+
+pub fn parse_json_rpc_error(res: Value) -> Option<JsonRpcError> {
+    match serde_json::from_value::<JsonRpcError>(res) {
+        Ok(jsonrpc_error) => Some(jsonrpc_error),
+        Err(_) => None,
+    }
 }

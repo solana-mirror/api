@@ -1,4 +1,4 @@
-use crate::Error;
+use crate::{utils::parse_json_rpc_error, Error};
 use reqwest::Client;
 use serde::{self, Deserialize, Serialize};
 use serde_json::Value;
@@ -21,6 +21,19 @@ impl JsonRpcMethod {
             JsonRpcMethod::GetSignaturesForAddress => "getSignaturesForAddress".to_string(),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ErrorDetails {
+    code: i32,
+    message: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct JsonRpcError {
+    error: ErrorDetails,
+    #[serde(rename = "jsonrpc")]
+    json_rpc: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -90,6 +103,13 @@ impl SolanaMirrorClient {
             inner_client: Client::new(),
             rpc_url,
         }
+    }
+
+    pub fn from_reqwest_client(inner_client: Client, rpc_url: String) -> Self {
+        return Self {
+            inner_client,
+            rpc_url,
+        };
     }
 
     async fn make_batch_request<T: Serialize>(
@@ -186,7 +206,23 @@ impl SolanaMirrorClient {
             })
             .collect();
 
-        let res = self.make_batch_request(&body).await?;
+        let mut res = self.make_batch_request(&body).await?;
+
+        // If we get rate limited, retry once more
+        for i in 1..=3 {
+            if let Some(jsonrpc_error) = parse_json_rpc_error(res.clone()) {
+                print!("JsonRpcError: {:?}", jsonrpc_error);
+                if i != 3 {
+                    res = self.make_batch_request(&body).await?;
+                } else {
+                    println!("Retry limit exceeded");
+                    return Err(Error::FetchError);
+                }
+            } else {
+                break;
+            }
+        }
+
         match serde_json::from_value::<Vec<GetTransactionResponse>>(res) {
             Ok(res) => Ok(res),
             Err(e) => {
