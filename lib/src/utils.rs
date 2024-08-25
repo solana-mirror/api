@@ -1,11 +1,12 @@
 use dotenv::dotenv;
 use serde_json::Value;
-use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_sdk::{program_pack::Pack, pubkey::Pubkey};
-use spl_token::state::Mint;
+use solana_sdk::pubkey::Pubkey;
 use std::env;
 
-use crate::client::JsonRpcError;
+use crate::{
+    client::{types::Decimals, GetDecimalsConfig, JsonRpcError, SolanaMirrorClient},
+    Error,
+};
 
 pub fn clean_string(s: String) -> String {
     s.trim_matches('\0').trim_matches('"').to_string()
@@ -16,12 +17,23 @@ pub fn get_rpc() -> String {
     env::var("RPC").unwrap_or_else(|_| "https://api.mainnet-beta.solana.com".to_string())
 }
 
-pub async fn get_token_data(connection: &RpcClient, token: &Pubkey) -> Option<Mint> {
-    let account_info = connection.get_account(token).await.unwrap();
+pub async fn get_token_data(
+    client: &SolanaMirrorClient,
+    token: &Pubkey,
+) -> Result<Option<Decimals>, Error> {
+    let response = client
+        .get_decimals(
+            token,
+            Some(GetDecimalsConfig {
+                commitment: Some("confirmed".to_string()),
+            }),
+        )
+        .await?;
 
-    match Mint::unpack(&account_info.data) {
-        Ok(mint) => Some(mint),
-        Err(_) => None,
+    if let Some(result) = response.result {
+        Ok(Some(result.value))
+    } else {
+        Ok(None)
     }
 }
 

@@ -1,15 +1,23 @@
 use crate::{utils::parse_json_rpc_error, Error};
+use base64::Engine;
 use reqwest::Client;
 use serde::{self, Deserialize, Serialize};
 use serde_json::Value;
 use solana_sdk::pubkey::Pubkey;
-use types::{Signature, Transaction};
+use types::{
+    AccountDataResultData, AccountsResultData, BalanceResultData, DecimalsResultData, Signature,
+    Transaction,
+};
 use uuid::Uuid;
 
 pub mod types;
 
 #[derive(Serialize, Deserialize)]
 pub enum JsonRpcMethod {
+    GetTokenAccountsByOwner,
+    GetBalance,
+    GetAccountInfo,
+    GetDecimals,
     GetTransaction,
     GetSignaturesForAddress,
 }
@@ -17,6 +25,10 @@ pub enum JsonRpcMethod {
 impl JsonRpcMethod {
     pub fn to_string(&self) -> String {
         match self {
+            JsonRpcMethod::GetTokenAccountsByOwner => "getTokenAccountsByOwner".to_string(),
+            JsonRpcMethod::GetBalance => "getBalance".to_string(),
+            JsonRpcMethod::GetAccountInfo => "getAccountInfo".to_string(),
+            JsonRpcMethod::GetDecimals => "getTokenSupply".to_string(),
             JsonRpcMethod::GetTransaction => "getTransaction".to_string(),
             JsonRpcMethod::GetSignaturesForAddress => "getSignaturesForAddress".to_string(),
         }
@@ -58,6 +70,94 @@ pub struct SolanaMirrorClient {
     inner_client: Client,
     pub rpc_url: String,
 }
+
+// get_token_accounts_by_owner
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetTokenAccountsByOwnerResponse {
+    pub jsonrpc: String,
+    pub result: Option<AccountsResultData>,
+    pub id: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GetTokenAccountsByOwnerFilter {
+    #[serde(rename = "programId")]
+    pub program_id: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GetTokenAccountsByOwnerConfig {
+    pub commitment: Option<String>,
+    #[serde(rename = "minContextSlot")]
+    pub min_context_slot: Option<u64>,
+    #[serde(rename = "dataSlice")]
+    pub data_slice: Option<DataSlice>,
+    pub encoding: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DataSlice {
+    pub length: usize,
+    pub offset: usize,
+}
+
+pub type GetTokenAccountsByOwnerParams = (
+    String,
+    Option<GetTokenAccountsByOwnerFilter>,
+    Option<GetTokenAccountsByOwnerConfig>,
+);
+
+// get_balance
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetBalanceResponse {
+    pub jsonrpc: String,
+    pub result: Option<BalanceResultData>,
+    pub id: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GetBalanceConfig {
+    pub commitment: Option<String>,
+    #[serde(rename = "minContextSlot")]
+    pub min_context_slot: Option<usize>,
+}
+
+pub type GetBalanceParams = (String, Option<GetBalanceConfig>);
+
+// get_account_info
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetAccountDataResponse {
+    pub jsonrpc: String,
+    pub result: Option<AccountDataResultData>,
+    pub id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetAccountDataConfig {
+    pub commitment: Option<String>,
+    pub encoding: Option<String>,
+}
+
+pub type GetAccountDataParams = (String, Option<GetAccountDataConfig>);
+
+// get_decimals
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetDecimalsResponse {
+    pub id: String,
+    pub jsonrpc: String,
+    pub result: Option<DecimalsResultData>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetDecimalsConfig {
+    pub commitment: Option<String>,
+}
+
+pub type GetDecimalsParams = (String, Option<GetDecimalsConfig>);
 
 // get_signatures_for_address method
 
@@ -164,6 +264,111 @@ impl SolanaMirrorClient {
             Err(e) => {
                 println!("Failed to deserialize {:?}", e);
                 Err(Error::FetchError)
+            }
+        }
+    }
+
+    pub async fn get_token_accounts_by_owner(
+        &self,
+        owner: &Pubkey,
+        filter: Option<GetTokenAccountsByOwnerFilter>,
+        config: Option<GetTokenAccountsByOwnerConfig>,
+    ) -> Result<GetTokenAccountsByOwnerResponse, Error> {
+        let params: GetTokenAccountsByOwnerParams = (owner.to_string(), filter, config);
+
+        let body = Request {
+            jsonrpc: "2.0".to_string(),
+            method: JsonRpcMethod::GetTokenAccountsByOwner.to_string(),
+            params: Some(params),
+            id: Uuid::new_v4().to_string(),
+        };
+
+        let res = self.make_request(&body).await?;
+        match serde_json::from_value::<GetTokenAccountsByOwnerResponse>(res) {
+            Ok(res) => Ok(res),
+            Err(e) => {
+                println!("Error parsing JSON: {:?}", e);
+                Err(Error::ParseError)
+            }
+        }
+    }
+
+    pub async fn get_balance(
+        &self,
+        owner: &Pubkey,
+        config: Option<GetBalanceConfig>,
+    ) -> Result<u64, Error> {
+        let params: GetBalanceParams = (owner.to_string(), config);
+
+        let body = Request {
+            jsonrpc: "2.0".to_string(),
+            method: JsonRpcMethod::GetBalance.to_string(),
+            params: Some(params),
+            id: Uuid::new_v4().to_string(),
+        };
+
+        let res = self.make_request(&body).await?;
+        match serde_json::from_value::<GetBalanceResponse>(res) {
+            Ok(res) => Ok(res.result.unwrap().value),
+            Err(e) => {
+                println!("Error parsing balance JSON: {:?}", e);
+                Err(Error::ParseError)
+            }
+        }
+    }
+
+    pub async fn get_account_info(
+        &self,
+        pubkey: &Pubkey,
+        config: Option<GetAccountDataConfig>,
+    ) -> Result<Vec<u8>, Error> {
+        let params: GetAccountDataParams = (pubkey.to_string(), config);
+
+        let body = Request {
+            jsonrpc: "2.0".to_string(),
+            method: JsonRpcMethod::GetAccountInfo.to_string(),
+            params: Some(params),
+            id: Uuid::new_v4().to_string(),
+        };
+
+        let res = self.make_request(&body).await?;
+        match serde_json::from_value::<GetAccountDataResponse>(res) {
+            Ok(res) => {
+                let base64_data = &res.result.as_ref().unwrap().value.data[0];
+
+                let decoded_data = base64::prelude::BASE64_STANDARD
+                    .decode(base64_data)
+                    .expect("Failed to decode base64 data.");
+
+                Ok(decoded_data)
+            }
+            Err(e) => {
+                println!("Error parsing JSON: {:?}", e);
+                Err(Error::ParseError)
+            }
+        }
+    }
+
+    pub async fn get_decimals(
+        &self,
+        mint: &Pubkey,
+        config: Option<GetDecimalsConfig>,
+    ) -> Result<GetDecimalsResponse, Error> {
+        let params: GetDecimalsParams = (mint.to_string(), config);
+
+        let body = Request {
+            jsonrpc: "2.0".to_string(),
+            method: JsonRpcMethod::GetDecimals.to_string(),
+            params: Some(params),
+            id: Uuid::new_v4().to_string(),
+        };
+
+        let res = self.make_request(&body).await?;
+        match serde_json::from_value::<GetDecimalsResponse>(res) {
+            Ok(res) => Ok(res),
+            Err(e) => {
+                println!("Error parsing JSON from decimals: {:?}", e);
+                Err(Error::ParseError)
             }
         }
     }

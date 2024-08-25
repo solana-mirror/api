@@ -1,27 +1,40 @@
-use crate::utils::{get_rpc, get_token_data};
+use crate::{client::SolanaMirrorClient, utils::get_token_data, USDC_ADDRESS};
 use jupiter_swap_api_client::{quote::QuoteRequest, JupiterSwapApiClient};
-use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_program::pubkey::Pubkey as ProgramPubkey;
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
 
-pub async fn get_price(token_a: Pubkey, token_b: Pubkey) -> Option<f64> {
-    let connection = RpcClient::new(get_rpc());
+pub struct GetPriceConfig {
+    pub decimals: Option<u8>,
+}
+
+/// Optionally fetches the decimals for a given token and its price and returns it
+pub async fn get_price(
+    client: &SolanaMirrorClient,
+    token_a: Pubkey,
+    config: GetPriceConfig,
+) -> Option<f64> {
     let jupiter = JupiterSwapApiClient::new("https://quote-api.jup.ag/v6".to_string());
+
+    let token_b = Pubkey::from_str(USDC_ADDRESS).unwrap();
 
     // Using USDC as $, if it's comparing USDC to itself return 1
     if token_a.to_string() == token_b.to_string() {
         return Some(1.0);
     }
 
-    let decimals_a = get_token_data(&connection, &token_a)
-        .await
-        .unwrap()
-        .decimals;
-    let decimals_b = get_token_data(&connection, &token_b)
-        .await
-        .unwrap()
-        .decimals;
+    let decimals_b = 6;
+
+    let decimals_a = match config.decimals {
+        Some(decimals) => decimals,
+        None => {
+            get_token_data(&client, &token_a)
+                .await
+                .unwrap()
+                .unwrap()
+                .decimals
+        }
+    };
 
     let amount = 10_u64.pow(decimals_a as u32);
 

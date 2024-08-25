@@ -3,6 +3,118 @@ use serde_json::Value;
 
 use crate::client::Header;
 
+// get_token_accounts_by_owner
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AccountsResultData {
+    pub context: Context,
+    pub value: Vec<AccountData>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Context {
+    #[serde(rename = "apiVersion")]
+    pub api_version: String,
+    pub slot: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AccountData {
+    pub account: Account,
+    pub pubkey: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Account {
+    pub data: Data,
+    pub executable: bool,
+    pub lamports: u64,
+    pub owner: String,
+    #[serde(rename = "rentEpoch")]
+    pub rent_epoch: u64,
+    pub space: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Data {
+    pub parsed: ParsedData,
+    pub program: String,
+    pub space: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ParsedData {
+    pub info: AccountInfo,
+    #[serde(rename = "type")]
+    pub account_type_str: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AccountInfo {
+    #[serde(rename = "isNative")]
+    pub is_native: bool,
+    pub mint: String,
+    pub owner: String,
+    pub state: String,
+    #[serde(rename = "tokenAmount")]
+    pub token_amount: TokenAmount,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenAmount {
+    pub amount: String,
+    pub decimals: u8,
+    #[serde(rename = "uiAmount")]
+    pub ui_amount: f64,
+    #[serde(rename = "uiAmountString")]
+    pub ui_amount_string: String,
+}
+
+// get_balance types
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BalanceResultData {
+    pub context: Context,
+    pub value: u64,
+}
+
+// get_account_info types
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AccountDataResultData {
+    pub context: Context,
+    pub value: AccountMetadataInfo,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AccountMetadataInfo {
+    pub data: Vec<String>, //Metadata,
+    pub executable: bool,
+    pub lamports: u64,
+    pub owner: String,
+    #[serde(rename = "rentEpoch")]
+    pub rent_epoch: u64,
+    pub space: u64,
+}
+
+// get_decimals
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DecimalsResultData {
+    pub context: Context,
+    pub value: Decimals,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Decimals {
+    pub amount: String,
+    pub decimals: u8,
+    #[serde(rename = "uiAmount")]
+    pub ui_amount: Option<f64>,
+    #[serde(rename = "uiAmountString")]
+    pub ui_amount_string: String,
+}
+
 // get_signatures_for_address types
 
 #[derive(Serialize, Deserialize, Debug)]

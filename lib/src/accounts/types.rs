@@ -6,7 +6,7 @@ pub struct ParsedAta {
     pub ata: String,
     #[serde(rename = "coingeckoId")]
     pub coingecko_id: Option<String>,
-    pub decimals: u64,
+    pub decimals: u8,
     pub name: String,
     pub symbol: String,
     pub image: String,

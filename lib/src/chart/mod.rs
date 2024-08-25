@@ -9,9 +9,9 @@ use types::{ChartData, ChartDataWithPrice, FormattedAmountWithPrice, GetCoinMark
 use crate::{
     client::SolanaMirrorClient,
     coingecko::{get_coingecko_id, CoingeckoClient},
-    price::get_price,
+    price::{get_price, GetPriceConfig},
     transactions::{get_parsed_transactions, types::ParsedTransaction},
-    Error, USDC_ADDRESS,
+    Error,
 };
 
 #[derive(Debug)]
@@ -152,8 +152,11 @@ fn filter_balance_states(
     filtered_states
 }
 
-pub async fn get_price_states(states: Vec<ChartData>) -> Result<Vec<ChartDataWithPrice>, Error> {
-    let client = CoingeckoClient::new();
+pub async fn get_price_states(
+    client: &SolanaMirrorClient,
+    states: Vec<ChartData>,
+) -> Result<Vec<ChartDataWithPrice>, Error> {
+    let coingecko_client = CoingeckoClient::new();
     let mut coingecko_prices: HashMap<String, Vec<(u64, f64)>> = HashMap::new();
 
     let balances = states
@@ -185,7 +188,7 @@ pub async fn get_price_states(states: Vec<ChartData>) -> Result<Vec<ChartDataWit
                     to: to as u32,
                 };
 
-                match client.get_coin_market_chart(params).await {
+                match coingecko_client.get_coin_market_chart(params).await {
                     Ok(prices) => {
                         coingecko_prices.insert(mint.clone(), prices);
                     }
@@ -208,8 +211,17 @@ pub async fn get_price_states(states: Vec<ChartData>) -> Result<Vec<ChartDataWit
             let price = if i == last_state_index {
                 // Get current price from Jup for accurracy
                 get_price(
+                    client,
                     Pubkey::from_str(&mint).unwrap(),
-                    Pubkey::from_str(USDC_ADDRESS).unwrap(),
+                    GetPriceConfig {
+                        decimals: {
+                            if mint == "So11111111111111111111111111111111111111112" {
+                                Some(9)
+                            } else {
+                                None
+                            }
+                        },
+                    },
                 )
                 .await
                 .unwrap_or(0.0)

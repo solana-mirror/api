@@ -37,7 +37,7 @@ pub async fn chart_handler(
 
     let client = SolanaMirrorClient::new(get_rpc());
     let chart_data = get_chart_data(&client, &pubkey, parsed_timeframe, range).await;
-    let chart_data_with_price = get_price_states(chart_data.unwrap()).await;
+    let chart_data_with_price = get_price_states(&client, chart_data.unwrap()).await;
 
     match chart_data_with_price {
         Ok(data) => Ok(Json(data)),
