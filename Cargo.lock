@@ -1426,7 +1426,6 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "bincode",
- "dotenv",
  "futures",
  "jupiter-swap-api-client",
  "mpl-token-metadata",
@@ -2667,6 +2666,7 @@ dependencies = [
 name = "solana-mirror-api"
 version = "0.1.0"
 dependencies = [
+ "dotenv",
  "lib",
  "reqwest",
  "rocket",

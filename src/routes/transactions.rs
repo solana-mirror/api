@@ -2,7 +2,7 @@ use lib::client::SolanaMirrorClient;
 use lib::transactions::get_parsed_transactions;
 use lib::transactions::types::ParsedTransaction;
 use lib::utils::get_rpc;
-use lib::Error;
+use lib::Error::{InvalidAddress, TooManyRequests};
 use rocket::{http::Status, serde::json::Json};
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
@@ -22,9 +22,8 @@ pub async fn transactions_handler(address: &str) -> Result<Json<Vec<ParsedTransa
         Ok(txs) => Ok(Json(txs)),
         Err(err) => {
             let status_code = match err {
-                Error::ParseError => Status::InternalServerError,
-                Error::FetchError => Status::InternalServerError,
-                Error::InvalidAddress => Status::BadRequest,
+                InvalidAddress => Status::BadRequest,
+                TooManyRequests => Status::TooManyRequests,
                 _ => Status::InternalServerError,
             };
             Err(status_code)

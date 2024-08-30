@@ -1,10 +1,10 @@
 use crate::{
     client::{
-        types::AccountData, GetAccountDataConfig, GetBalanceConfig, GetTokenAccountsByOwnerConfig,
+        types::AccountData, GetAccountDataConfig, GetTokenAccountsByOwnerConfig,
         GetTokenAccountsByOwnerFilter, SolanaMirrorClient,
     },
     coingecko::get_coingecko_id,
-    price::{get_price, GetPriceConfig},
+    price::get_price,
     utils::clean_string,
     Error, SOL_ADDRESS,
 };
@@ -26,7 +26,7 @@ pub async fn get_parsed_accounts(
 ) -> Result<Vec<ParsedAta>, Error> {
     let accounts = get_accounts(client, address).await?;
     let parse_futures = accounts
-        .into_iter()
+        .iter()
         .map(|account| parse_account(client, account));
 
     let parsed_results = join_all(parse_futures).await;
@@ -44,22 +44,16 @@ pub async fn get_parsed_accounts(
 }
 
 /// Fetches the SOL account associated with the given address.
-pub async fn get_solana(client: &SolanaMirrorClient, pubkey: &Pubkey) -> ParsedAta {
+async fn get_solana(client: &SolanaMirrorClient, pubkey: &Pubkey) -> ParsedAta {
     let price = get_price(
         client,
         Pubkey::from_str(SOL_ADDRESS).unwrap(),
-        GetPriceConfig { decimals: Some(9) },
+        Some(9)
     )
     .await;
 
     let amount = client
-        .get_balance(
-            pubkey,
-            Some(GetBalanceConfig {
-                commitment: None,
-                min_context_slot: None,
-            }),
-        )
+        .get_balance(pubkey, None)
         .await
         .unwrap_or(0);
 
@@ -79,7 +73,7 @@ pub async fn get_solana(client: &SolanaMirrorClient, pubkey: &Pubkey) -> ParsedA
 }
 
 /// Fetches the token accounts associated with the given address.
-pub async fn get_accounts(
+async fn get_accounts(
     client: &SolanaMirrorClient,
     pubkey: &Pubkey,
 ) -> Result<Vec<AccountData>, Error> {
@@ -96,48 +90,41 @@ pub async fn get_accounts(
                 encoding: Some("jsonParsed".to_string()),
             }),
         )
-        .await
-        .map_err(|e| {
-            println!("Error getting token accounts: {:?}", e);
-            e
-        })?;
+        .await?;
 
-    Ok(accounts.result.map(|x| x.value).unwrap())
+    Ok(accounts.result.value)
 }
 
 /// Parses the given account.
-pub async fn parse_account(
+async fn parse_account(
     client: &SolanaMirrorClient,
-    account: AccountData,
+    account: &AccountData,
 ) -> Result<ParsedAta, Error> {
-    let data = account.account.data;
-    let info = data.parsed.info;
-    let mint = info.mint;
+    let data = &account.account.data;
+    let info = &data.parsed.info;
+    let mint = &info.mint;
 
-    let metadata = fetch_metadata(client, &mint).await;
+    let metadata = fetch_metadata(client, mint).await;
 
-    let ata = account.pubkey;
+    let ata = &account.pubkey;
     let decimals = info.token_amount.decimals;
     let amount = info.token_amount.amount.parse::<u64>().unwrap();
     let formatted = info.token_amount.ui_amount;
 
-    let mint_pubkey = Pubkey::from_str(&mint).unwrap();
+    let mint_pubkey = Pubkey::from_str(mint).unwrap();
     let price = get_price(
         client,
         mint_pubkey,
-        GetPriceConfig {
-            decimals: Some(decimals),
-        },
+        Some(decimals),
     )
     .await;
 
-    let coingecko_id = get_coingecko_id(&mint).await;
-
+    let coingecko_id = get_coingecko_id(mint).await;
     let image = fetch_image(&metadata).await;
 
-    return Ok(ParsedAta {
-        mint,
-        ata,
+    Ok(ParsedAta {
+        mint: mint.to_string(),
+        ata: ata.to_string(),
         coingecko_id,
         decimals,
         name: metadata.name,
@@ -145,26 +132,25 @@ pub async fn parse_account(
         image,
         price,
         balance: Balance { amount, formatted },
-    });
+    })
 }
 
 /// Fetches the metadata associated with the given mint address.
-pub async fn fetch_metadata(client: &SolanaMirrorClient, mint_address: &str) -> ParsedMetadata {
+async fn fetch_metadata(client: &SolanaMirrorClient, mint_address: &str) -> ParsedMetadata {
     let mint_pubkey = Pubkey::from_str(mint_address).unwrap();
     let mpl_program_id = Pubkey::from_str(MPL_TOKEN_METADATA_ID.to_string().as_str()).unwrap();
 
     // Get the metadata account address associated with the mint
-    let metadata_pubkey = Pubkey::find_program_address(
+    let (metadata_pubkey, _) = Pubkey::find_program_address(
         &[
             "metadata".as_ref(),
             &mpl_program_id.to_bytes(),
             &mint_pubkey.to_bytes(),
         ],
         &mpl_program_id,
-    )
-    .0;
+    );
 
-    let mirror_account_data = client
+    let data = match client
         .get_account_info(
             &metadata_pubkey,
             Some(GetAccountDataConfig {
@@ -173,12 +159,12 @@ pub async fn fetch_metadata(client: &SolanaMirrorClient, mint_address: &str) -> 
             }),
         )
         .await
-        .map_err(|e| {
-            println!("Error getting account info: {:?}", e);
-            e
-        });
+    {
+        Ok(data) => data,
+        Err(_) => return ParsedMetadata::default(),
+    };
 
-    match Metadata::safe_deserialize(&mirror_account_data.unwrap()) {
+    match Metadata::safe_deserialize(&data) {
         Ok(metadata) => parse_metadata(metadata),
         Err(_) => ParsedMetadata::default(),
     }
@@ -195,6 +181,7 @@ fn parse_metadata(metadata: Metadata) -> ParsedMetadata {
 
 /// Fetches the image for each account
 async fn fetch_image(metadata: &ParsedMetadata) -> String {
+    // TODO: have a more generic image fallback
     let predefined_images = HashMap::from([
         (
             "USDC",

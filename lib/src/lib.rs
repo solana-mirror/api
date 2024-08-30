@@ -15,4 +15,5 @@ pub enum Error {
     InvalidTimeframe,
     FetchError,
     ParseError,
+    TooManyRequests
 }

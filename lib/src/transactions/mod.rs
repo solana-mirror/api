@@ -8,10 +8,7 @@ use crate::{
     client::{
         types::{TokenBalance, Transaction},
         GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient,
-    },
-    transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction},
-    utils::create_batches,
-    Error, SOL_ADDRESS,
+    }, transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction}, utils::create_batches, Error, SOL_ADDRESS
 };
 
 /// Get the parsed transactions for the given address
@@ -23,6 +20,9 @@ pub async fn get_parsed_transactions(
     let batches = create_batches(&signatures, 900, None);
     let mut txs: Vec<Transaction> = Vec::new();
 
+    // Send signatures to parse in batches of 900, async so rate limit is not hit
+    // Note: Helius doesn't allow batch RPC requests anymore
+    // TODO: send in batches of rate limit per second
     for batch in batches {
         let transactions: Vec<crate::client::GetTransactionResponse> = client
             .get_transactions(
@@ -35,7 +35,7 @@ pub async fn get_parsed_transactions(
             )
             .await?;
 
-        txs.extend(transactions.iter().filter_map(|tx| tx.result.clone()));
+        txs.extend(transactions.into_iter().filter_map(|tx| tx.result));
     }
 
     let mut parsed_transactions: Vec<ParsedTransaction> = txs
@@ -43,8 +43,8 @@ pub async fn get_parsed_transactions(
         .map(|tx| parse_transaction(tx, pubkey))
         .filter_map(|x| x.ok())
         .collect::<Vec<ParsedTransaction>>();
-    parsed_transactions.sort_by_key(|x| x.block_time);
 
+    parsed_transactions.sort_by_key(|x| x.block_time);
     Ok(parsed_transactions)
 }
 
@@ -56,6 +56,8 @@ async fn get_signatures(
     let mut should_continue: bool = true;
     let mut signatures: Vec<String> = Vec::new();
 
+    // Get signatures for the address until the length 
+    // is not the max (1000) and set `before` accordingly
     while should_continue {
         let response = client
             .get_signatures_for_address(
@@ -74,14 +76,15 @@ async fn get_signatures(
         if raw_signatures.is_empty() {
             should_continue = false;
         } else {
-            let mapped: Vec<String> = raw_signatures.iter().map(|x| x.signature.clone()).collect();
+            let len = raw_signatures.len(); // Get the length before moving the value to the iter
+            let mapped: Vec<String> = raw_signatures.into_iter().map(|x| x.signature).collect();
 
             if let Some(last_signature) = mapped.last() {
                 before = Some(last_signature.to_string());
             }
 
             signatures.extend(mapped);
-            if raw_signatures.len() < 1000 {
+            if len < 1000 {
                 should_continue = false;
             }
         }
@@ -98,7 +101,7 @@ fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransact
         .message
         .account_keys
         .iter()
-        .position(|x| x.to_owned() == signer.to_string())
+        .position(|x| *x == signer.to_string())
     {
         Some(idx) => idx,
         None => return Err(Error::InvalidAddress),
@@ -126,41 +129,35 @@ fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransact
 
     // Handle SPL
     let pre_token_balances: Vec<TokenBalance> = tx
-        .clone()
         .meta
         .pre_token_balances
-        .into_iter()
+        .iter()
         .filter(|x| x.owner == signer.to_string())
+        .cloned()
         .collect();
 
     let post_token_balances: Vec<TokenBalance> = tx
-        .clone()
         .meta
         .post_token_balances
-        .into_iter()
+        .iter()
         .filter(|x| x.owner == signer.to_string())
+        .cloned()
         .collect();
 
     for pre_balance in pre_token_balances {
-        if !balances.contains_key(pre_balance.mint.as_str()) {
-            balances.insert(pre_balance.mint.to_string(), BalanceChange::default());
-        }
+        let balance_change = balances.entry(pre_balance.mint).or_insert(BalanceChange::default());
 
-        let balance_change = balances.get_mut(pre_balance.mint.as_str()).unwrap();
         balance_change.pre = FormattedAmount {
-            amount: pre_balance.ui_token_amount.amount.parse::<u64>().unwrap(),
+            amount: pre_balance.ui_token_amount.amount.parse::<u64>().unwrap_or_default(),
             formatted: pre_balance.ui_token_amount.ui_amount.unwrap_or_default(),
         };
     }
 
     for post_balance in post_token_balances {
-        if !balances.contains_key(post_balance.mint.as_str()) {
-            balances.insert(post_balance.mint.to_string(), BalanceChange::default());
-        }
+        let balance_change = balances.entry(post_balance.mint).or_insert(BalanceChange::default());
 
-        let balance_change = balances.get_mut(post_balance.mint.as_str()).unwrap();
         balance_change.post = FormattedAmount {
-            amount: post_balance.ui_token_amount.amount.parse::<u64>().unwrap(),
+            amount: post_balance.ui_token_amount.amount.parse::<u64>().unwrap_or_default(),
             formatted: post_balance.ui_token_amount.ui_amount.unwrap_or_default(),
         };
     }
@@ -169,9 +166,9 @@ fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransact
     let parsed_instructions: Vec<String> = tx
         .meta
         .log_messages
-        .clone()
-        .unwrap_or_default()
-        .into_iter()
+        .as_ref()
+        .unwrap_or(&vec![])
+        .iter()
         .filter(|x| x.starts_with("Program log: Instruction: "))
         .map(|x| x.replace("Program log: Instruction: ", ""))
         .collect();

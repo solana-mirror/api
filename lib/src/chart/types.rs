@@ -27,6 +27,6 @@ pub struct ChartDataWithPrice {
 pub struct GetCoinMarketChartParams {
     pub id: String,
     pub vs_currency: String,
-    pub from: u32,
-    pub to: u32,
+    pub from: i64,
+    pub to: i64,
 }

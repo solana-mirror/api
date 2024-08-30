@@ -1,3 +1,5 @@
+use dotenv::dotenv;
+
 #[macro_use]
 extern crate rocket;
 
@@ -5,12 +7,13 @@ mod routes;
 
 #[launch]
 fn rocket() -> _ {
+    dotenv().ok();
     rocket::build().mount(
         "/",
         routes![
-            routes::accounts::accounts_handler,
-            routes::transactions::transactions_handler,
-            routes::chart::chart_handler
+            routes::accounts_handler,
+            routes::transactions_handler,
+            routes::chart_handler
         ],
     )
 }

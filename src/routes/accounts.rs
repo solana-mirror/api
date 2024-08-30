@@ -1,10 +1,7 @@
 use std::str::FromStr;
 
 use lib::{
-    accounts::{get_parsed_accounts, types::ParsedAta},
-    client::SolanaMirrorClient,
-    utils::get_rpc,
-    Error,
+    accounts::{get_parsed_accounts, types::ParsedAta}, client::SolanaMirrorClient, utils::get_rpc, Error
 };
 use rocket::{http::Status, serde::json::Json};
 use solana_sdk::pubkey::Pubkey;
@@ -16,6 +13,7 @@ pub async fn accounts_handler(address: &str) -> Result<Json<Vec<ParsedAta>>, Sta
         Err(_) => return Err(Status::BadRequest),
     };
 
+
     let client = SolanaMirrorClient::new(get_rpc());
     let parsed_accounts = get_parsed_accounts(&client, &pubkey).await;
 
@@ -23,9 +21,8 @@ pub async fn accounts_handler(address: &str) -> Result<Json<Vec<ParsedAta>>, Sta
         Ok(parsed_accounts) => Ok(Json(parsed_accounts)),
         Err(err) => {
             let status_code = match err {
-                Error::ParseError => Status::InternalServerError,
-                Error::FetchError => Status::InternalServerError,
                 Error::InvalidAddress => Status::BadRequest,
+                Error::TooManyRequests => Status::TooManyRequests,
                 _ => Status::InternalServerError,
             };
             Err(status_code)

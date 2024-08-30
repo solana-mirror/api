@@ -1,10 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::client::Header;
-
 // get_token_accounts_by_owner
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccountsResultData {
     pub context: Context,
@@ -70,15 +67,14 @@ pub struct TokenAmount {
     pub ui_amount_string: String,
 }
 
-// get_balance types
-
+// get_balance 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BalanceResultData {
     pub context: Context,
     pub value: u64,
 }
 
-// get_account_info types
+// get_account_info 
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccountDataResultData {
@@ -115,7 +111,7 @@ pub struct Decimals {
     pub ui_amount_string: String,
 }
 
-// get_signatures_for_address types
+// get_signatures_for_address 
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Signature {
@@ -129,7 +125,7 @@ pub struct Signature {
     pub confirmation_status: Option<String>,
 }
 
-// get_transactions method types
+// get_transactions 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Transaction {
@@ -230,4 +226,14 @@ pub struct Instruction {
 pub enum Version {
     U8(u8),
     String(String),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Header {
+    #[serde(rename = "numReadonlySignedAccounts")]
+    pub num_readonly_signed_accounts: u8,
+    #[serde(rename = "numReadonlyUnsignedAccounts")]
+    pub num_readonly_unsigned_accounts: u8,
+    #[serde(rename = "numRequiredSignatures")]
+    pub num_required_signatures: u8,
 }

@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs::File, io::BufReader};
 
 use reqwest::Client;
 use serde::Deserialize;
-use serde_json::from_reader;
+use serde_json::{Value, from_reader};
 
 use crate::{chart::types::GetCoinMarketChartParams, Error};
 
@@ -17,12 +17,13 @@ pub struct CoingeckoToken {
 
 pub type CoingeckoData = HashMap<String, CoingeckoToken>;
 
-pub async fn get_coingecko_data() -> Result<CoingeckoData, Box<dyn std::error::Error>> {
+/// Reads the coingecko.json file with all the coingecko IDs available
+pub async fn get_coingecko_data() -> Result<CoingeckoData, Error> {
     let file = match File::open("lib/src/coingecko.json") {
         Ok(file) => file,
         Err(e) => {
             eprintln!("Failed to open file: {}", e);
-            return Err(Box::new(e));
+            return Err(Error::ParseError);
         }
     };
 
@@ -32,11 +33,12 @@ pub async fn get_coingecko_data() -> Result<CoingeckoData, Box<dyn std::error::E
         Ok(data) => Ok(data),
         Err(e) => {
             eprintln!("Failed to parse file: {}", e);
-            return Err(Box::new(e));
+            Err(Error::ParseError)
         }
     }
 }
 
+/// Returns the coingecko ID from a mint from the coingecko.json file
 pub async fn get_coingecko_id(mint: &str) -> Option<String> {
     match get_coingecko_data().await {
         Ok(data) => match data.get(mint) {
@@ -47,7 +49,7 @@ pub async fn get_coingecko_id(mint: &str) -> Option<String> {
     }
 }
 
-pub struct CoingeckoClient {
+pub struct CoingeckoClient{
     pub inner_client: Client,
 }
 
@@ -58,8 +60,23 @@ impl CoingeckoClient {
         }
     }
 
-    pub fn from_reqwest_client(inner_client: Client) -> Self {
-        return Self { inner_client };
+    pub fn from_client(inner_client: &Client) -> Self {
+        Self { inner_client: inner_client.clone() }
+    }
+
+    async fn make_request(&self, endpoint: &str, query: &[(&str, String)]) -> Result<Value, Error> {
+        let request = self.inner_client.get(endpoint).query(query);
+
+        match request.send().await {
+            Ok(response) => {
+                let res = response
+                    .json::<Value>()
+                    .await
+                    .map_err(|_| Error::ParseError)?;
+                Ok(res)
+            },
+            Err(_) => Err(Error::FetchError)
+        }
     }
 
     pub async fn get_coin_market_chart(
@@ -67,36 +84,27 @@ impl CoingeckoClient {
         params: GetCoinMarketChartParams,
     ) -> Result<Vec<(u64, f64)>, Error> {
         let endpoint = format!("{}/coins/{}/market_chart/range", BASE_URL, params.id);
+        let query = &[
+            ("vs_currency", params.vs_currency),
+            ("from", params.from.to_string()),
+            ("to", params.to.to_string()),
+        ];
 
-        let response = self
-            .inner_client
-            .get(&endpoint)
-            .query(&[
-                ("vs_currency", params.vs_currency),
-                ("from", params.from.to_string()),
-                ("to", params.to.to_string()),
-            ])
-            .send()
-            .await
-            .unwrap();
+        let res = self.make_request(&endpoint, query).await?;
 
-        if response.status().is_success() {
-            let json: serde_json::Value = response.json().await.unwrap();
-            let prices = json["prices"]
-                .as_array()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(|p| {
-                    (
-                        p[0].as_u64().unwrap_or_default(),
-                        p[1].as_f64().unwrap_or_default(),
-                    )
-                })
-                .collect();
+        // TODO: set a type for the response and deserialize with serde
+        let prices = res["prices"]
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .map(|p| {
+                (
+                    p[0].as_u64().unwrap_or_default(),
+                    p[1].as_f64().unwrap_or_default(),
+                )
+            })
+            .collect();
 
-            Ok(prices)
-        } else {
-            Err(Error::FetchError)
-        }
+        Ok(prices)
     }
 }
