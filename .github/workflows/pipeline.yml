@@ -30,7 +30,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/head/master' || github.ref == 'github/head/gh-actions'
+    # if: github.ref == 'refs/head/master' 
 
     steps: 
       - name: Deploy to VPS
