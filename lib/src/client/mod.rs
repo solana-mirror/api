@@ -1,4 +1,5 @@
 use std::pin::Pin;
+use std::future::Future;
 
 use crate::Error;
 use base64::Engine;
@@ -159,7 +160,7 @@ pub type GetTransactionParams = (String, Option<GetTransactionConfig>);
 #[allow(dead_code)]
 async fn retry<T, F>(callback: F, max_retries: u8) -> Result<T, Error> 
 where 
-    F: Fn() -> Pin<Box<dyn std::future::Future<Output = Result<T, Error>> >>,
+    F: Fn() -> Pin<Box<dyn Future<Output = Result<T, Error>> >>,
 {
     for attempt in 0..=max_retries {
         match callback().await {
