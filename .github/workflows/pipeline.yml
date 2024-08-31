@@ -38,7 +38,7 @@ jobs:
         with: 
           host: ${{ secrets.GCP_VPS_HOST }}
           username: ${{ secrets.GCP_VPS_USER }}
-          key: ${{ secrets.GCP_VPS_PRIVATE_KEY }}
+          key: ${{ secrets.GCP_PRIVATE_KEY }}
           script: |
             touch hello.txt
             echo "Hello from Github Actions" << hello.txt
