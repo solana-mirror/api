@@ -80,15 +80,15 @@ Gets the wallet's transactions and builds state with all the balances at each in
 
 ```json
 [{
-    timestamp: 0,
-    balances: {
+    "timestamp": 0,
+    "balances": {
         "So11111111111111111111111111111111111111112": {
             "amount": 0,
             "formatted": 0,
             "usdValue": 0
         }
     },
-    usdValue: 0
+    "usdValue": 0
 }]
 ```
 
