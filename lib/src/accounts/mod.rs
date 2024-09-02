@@ -7,6 +7,7 @@ use crate::{
     price::get_price,
     utils::clean_string,
     Error, SOL_ADDRESS,
+    transactions::types::FormattedAmount
 };
 use core::str;
 use futures::future::join_all;
@@ -15,7 +16,7 @@ use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_sdk::pubkey::Pubkey;
 use spl_token::id as spl_token_id;
 use std::{collections::HashMap, str::FromStr};
-use types::{Balance, ImageResponse, ParsedAta, ParsedMetadata};
+use types::{ImageResponse, ParsedAta, ParsedMetadata};
 
 pub mod types;
 
@@ -68,7 +69,7 @@ async fn get_solana(client: &SolanaMirrorClient, pubkey: &Pubkey) -> ParsedAta {
         symbol: "SOL".to_string(),
         image: "https://cryptologos.cc/logos/solana-sol-logo.png?v=032".to_string(),
         price,
-        balance: Balance { amount, formatted },
+        balance: FormattedAmount { amount: amount.to_string(), formatted },
     }
 }
 
@@ -131,7 +132,7 @@ async fn parse_account(
         symbol: metadata.symbol,
         image,
         price,
-        balance: Balance { amount, formatted },
+        balance: FormattedAmount { amount: amount.to_string(), formatted },
     })
 }
 

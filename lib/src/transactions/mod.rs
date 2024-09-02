@@ -116,11 +116,11 @@ fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransact
             SOL_ADDRESS.to_string(),
             BalanceChange {
                 pre: FormattedAmount {
-                    amount: pre_sol,
+                    amount: pre_sol.to_string(),
                     formatted: pre_sol as f64 / LAMPORTS_PER_SOL as f64,
                 },
                 post: FormattedAmount {
-                    amount: post_sol,
+                    amount: post_sol.to_string(),
                     formatted: post_sol as f64 / LAMPORTS_PER_SOL as f64,
                 },
             },
@@ -148,7 +148,7 @@ fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransact
         let balance_change = balances.entry(pre_balance.mint).or_insert(BalanceChange::default());
 
         balance_change.pre = FormattedAmount {
-            amount: pre_balance.ui_token_amount.amount.parse::<u64>().unwrap_or_default(),
+            amount: pre_balance.ui_token_amount.amount,
             formatted: pre_balance.ui_token_amount.ui_amount.unwrap_or_default(),
         };
     }
@@ -157,7 +157,7 @@ fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransact
         let balance_change = balances.entry(post_balance.mint).or_insert(BalanceChange::default());
 
         balance_change.post = FormattedAmount {
-            amount: post_balance.ui_token_amount.amount.parse::<u64>().unwrap_or_default(),
+            amount: post_balance.ui_token_amount.amount,
             formatted: post_balance.ui_token_amount.ui_amount.unwrap_or_default(),
         };
     }

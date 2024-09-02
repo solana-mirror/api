@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::transactions::types::FormattedAmount;
+
 #[derive(Default, Debug, Serialize)]
 pub struct ParsedAta {
     pub mint: String,
@@ -11,13 +13,7 @@ pub struct ParsedAta {
     pub symbol: String,
     pub image: String,
     pub price: Option<f64>,
-    pub balance: Balance,
-}
-
-#[derive(Default, Debug, Serialize)]
-pub struct Balance {
-    pub amount: u64,
-    pub formatted: f64,
+    pub balance: FormattedAmount,
 }
 
 #[derive(Default, Debug, Serialize)]

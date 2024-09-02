@@ -4,7 +4,7 @@ use std::collections::HashMap;
 /// Represents a formatted amount
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FormattedAmount {
-    pub amount: u64,
+    pub amount: String,
     pub formatted: f64,
 }
 
