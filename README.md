@@ -36,31 +36,37 @@ Gets the wallet's ATAs, parsed with their respective metadata and balances
 - `price`: the Jupiter price against USDC of the mint
 - `balance`: the balance of the ATA
 
-### GET `/transactions/<address>`
+### GET `/transactions/<address>?index=`
 
 Gets the wallet's transactions and parses the balances before and after the tx of the tokens that were transferred
+
+#### Query params
+- Index: only fetch a range of the signatures. Index should be formatted like `start_idx-end_idx` (`0-1`)
 
 #### Response example
 
 ```json
-[{
-    "blockTime": 0,
-    "signatures": [""],
-    "logs" [""],
-    "balances": {
-        "So11111111111111111111111111111111111111112": {
-            "pre": {
-                "amount": 0,
-                "formatted": 0
-            },
-            "post": {
-                "amount": 0,
-                "formatted": 0
+{
+    transactions: [{
+        "blockTime": 0,
+        "signatures": [""],
+        "logs" [""],
+        "balances": {
+            "So11111111111111111111111111111111111111112": {
+                "pre": {
+                    "amount": 0,
+                    "formatted": 0
+                },
+                "post": {
+                    "amount": 0,
+                    "formatted": 0
+                }
             }
-        }
-    },
-    "parsedInstructions": [""]
-}]
+        },
+        "parsedInstructions": [""]
+    }],
+    count: 1
+}
 ```
 
 - `blockTime`: UNIX timestamp of the transactions
