@@ -54,7 +54,7 @@ pub async fn get_chart_data(
     range: u8,
 ) -> Result<Vec<ChartDataWithPrice>, Error> {
     let txs = get_parsed_transactions(client, pubkey, None).await?;
-    let states = get_balance_states(&txs);
+    let states = get_balance_states(&txs.transactions);
     let filtered_states = filter_balance_states(&states, timeframe, range);
     let price_states = get_price_states(client, coingecko_client, &filtered_states).await?;
 

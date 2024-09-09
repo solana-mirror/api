@@ -12,6 +12,7 @@ pub const SOL_ADDRESS: &str = "So11111111111111111111111111111111111111112";
 #[derive(Debug)]
 pub enum Error {
     InvalidAddress,
+    InvalidIndex,
     InvalidTimeframe,
     FetchError,
     ParseError,

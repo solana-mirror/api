@@ -11,19 +11,19 @@ use crate::{
     }, transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction}, utils::create_batches, Error, Page, SOL_ADDRESS
 };
 
+use self::types::TransactionResponse;
+
 /// Get the parsed transactions for the given address
 pub async fn get_parsed_transactions(
     client: &SolanaMirrorClient,
     pubkey: &Pubkey,
     page: Option<Page>,
-) -> Result<Vec<ParsedTransaction>, Error> {
+) -> Result<TransactionResponse, Error> {
     let signatures = get_signatures(client, pubkey).await?;
     let batches = match page {
         Some(p) => vec![signatures[p.start_idx..p.end_idx].to_vec()],
         None => create_batches(&signatures, 900, None)
     };
-
-    println!("{:?}", batches);
 
     let mut txs: Vec<Transaction> = Vec::new();
 
@@ -49,7 +49,11 @@ pub async fn get_parsed_transactions(
         .collect::<Vec<ParsedTransaction>>();
 
     parsed_transactions.sort_by_key(|x| x.block_time);
-    Ok(parsed_transactions)
+    
+    Ok(TransactionResponse {
+        transactions: parsed_transactions,
+        count: signatures.len()
+    })
 }
 
 async fn get_signatures(
