@@ -17,3 +17,9 @@ pub enum Error {
     ParseError,
     TooManyRequests
 }
+
+#[derive(Debug)]
+pub struct Page {
+    pub start_idx: usize,
+    pub end_idx: usize
+}
