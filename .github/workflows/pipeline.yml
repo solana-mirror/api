@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "master", "gh-actions" ]
+    branches: [ "*" ]
 
 env:
   CARGO_TERM_COLOR: always
