@@ -1,14 +1,17 @@
 use lib::client::SolanaMirrorClient;
 use lib::transactions::get_parsed_transactions;
-use lib::transactions::types::ParsedTransaction;
-use lib::utils::get_rpc;
+use lib::transactions::types::TransactionResponse;
+use lib::utils::{get_rpc, parse_page};
 use lib::Error::{InvalidAddress, TooManyRequests};
 use rocket::{http::Status, serde::json::Json};
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
 
-#[get("/transactions/<address>")]
-pub async fn transactions_handler(address: &str) -> Result<Json<Vec<ParsedTransaction>>, Status> {
+#[get("/transactions/<address>?<index>")]
+pub async fn transactions_handler(
+    address: &str, 
+    index: Option<&str>
+) -> Result<Json<TransactionResponse>, Status> {
     let client = SolanaMirrorClient::new(get_rpc());
 
     let pubkey = match Pubkey::from_str(address) {
@@ -16,7 +19,12 @@ pub async fn transactions_handler(address: &str) -> Result<Json<Vec<ParsedTransa
         Err(_) => return Err(Status::BadRequest),
     };
 
-    let parsed_transactions = get_parsed_transactions(&client, &pubkey).await;
+    let page = match parse_page(index) {
+        Ok(p) => p,
+        Err(_) => return Err(Status::BadRequest)
+    };
+
+    let parsed_transactions = get_parsed_transactions(&client, &pubkey, page).await;
 
     match parsed_transactions {
         Ok(txs) => Ok(Json(txs)),
@@ -30,3 +38,4 @@ pub async fn transactions_handler(address: &str) -> Result<Json<Vec<ParsedTransa
         }
     }
 }
+

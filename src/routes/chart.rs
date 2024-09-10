@@ -55,6 +55,7 @@ pub async fn chart_handler(
                 FetchError => Status::InternalServerError,
                 InvalidAddress => Status::BadRequest,
                 InvalidTimeframe => Status::BadRequest,
+                _ => Status::InternalServerError
             };
             Err(status_code)
         }

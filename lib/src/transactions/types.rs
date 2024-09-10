@@ -25,3 +25,9 @@ pub struct ParsedTransaction {
     #[serde(rename = "parsedInstructions")]
     pub parsed_instructions: Vec<String>,
 }
+
+#[derive(Debug, Default, Serialize)]
+pub struct TransactionResponse {
+    pub transactions: Vec<ParsedTransaction>,
+    pub count: usize,
+}

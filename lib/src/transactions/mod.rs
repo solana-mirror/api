@@ -8,21 +8,25 @@ use crate::{
     client::{
         types::{TokenBalance, Transaction},
         GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient,
-    }, transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction}, utils::create_batches, Error, SOL_ADDRESS
+    }, transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction}, utils::create_batches, Error, Page, SOL_ADDRESS
 };
+
+use self::types::TransactionResponse;
 
 /// Get the parsed transactions for the given address
 pub async fn get_parsed_transactions(
     client: &SolanaMirrorClient,
     pubkey: &Pubkey,
-) -> Result<Vec<ParsedTransaction>, Error> {
+    page: Option<Page>,
+) -> Result<TransactionResponse, Error> {
     let signatures = get_signatures(client, pubkey).await?;
-    let batches = create_batches(&signatures, 900, None);
+    let batches = match page {
+        Some(p) => vec![signatures[p.start_idx..p.end_idx].to_vec()],
+        None => create_batches(&signatures, 900, None)
+    };
+
     let mut txs: Vec<Transaction> = Vec::new();
 
-    // Send signatures to parse in batches of 900, async so rate limit is not hit
-    // Note: Helius doesn't allow batch RPC requests anymore
-    // TODO: send in batches of rate limit per second
     for batch in batches {
         let transactions: Vec<crate::client::GetTransactionResponse> = client
             .get_transactions(
@@ -45,7 +49,11 @@ pub async fn get_parsed_transactions(
         .collect::<Vec<ParsedTransaction>>();
 
     parsed_transactions.sort_by_key(|x| x.block_time);
-    Ok(parsed_transactions)
+    
+    Ok(TransactionResponse {
+        transactions: parsed_transactions,
+        count: signatures.len()
+    })
 }
 
 async fn get_signatures(
