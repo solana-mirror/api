@@ -21,7 +21,13 @@ pub async fn get_parsed_transactions(
 ) -> Result<TransactionResponse, Error> {
     let signatures = get_signatures(client, pubkey).await?;
     let batches = match page {
-        Some(p) => vec![signatures[p.start_idx..p.end_idx].to_vec()],
+        Some(p) => { 
+            if p.end_idx < signatures.len() {
+                vec![signatures[p.start_idx..p.end_idx].to_vec()]
+            } else {
+                vec![signatures[p.start_idx..].to_vec()] 
+            }
+        },
         None => create_batches(&signatures, 900, None)
     };
 
