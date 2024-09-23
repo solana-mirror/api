@@ -19,10 +19,11 @@ jobs:
         toolchain: stable
         override: true
     
-      run: cargo build --verbose
+      run: cargo build --release
+      run: docker build -t solanamirror/api:latest .
 
     # Enable tests once they are written
-    #   run: cargo test --verbose
+    # run: cargo test --verbose
 
   deploy:
     runs-on: ubuntu-latest
@@ -30,9 +31,10 @@ jobs:
     if: github.ref == 'refs/heads/master' 
 
     steps: 
-        uses: appleboy/ssh-action@v1.0.3
-        with: 
-          host: ${{ secrets.GCP_VPS_HOST }}
-          username: ${{ secrets.GCP_VPS_USER }}
-          key: ${{ secrets.GCP_PRIVATE_KEY }}
-          script: ./deploy-api.sh
+    - uses: docker/login-action@v2
+      with: 
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        docker push solanamirror/api:latest
+
