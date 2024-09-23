@@ -21,9 +21,6 @@ jobs:
         toolchain: stable
         override: true
 
-    - name: Build project
-      run: cargo build --release
-
     - name: Build Docker image
       run: docker build -t solanamirror/api:latest .
 
@@ -42,6 +39,9 @@ jobs:
       with: 
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: List Docker images
+      run: docker images
 
     - name: Push Docker image
       run: docker push solanamirror/api:latest
