@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  api:
+    image: solanamirror/api:latest
+    container_name: api
+    ports: 
+      - "8000:8000"
+    environment:
+      - RPC=${RPC} 
+    restart: always
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=120 
+    restart: always

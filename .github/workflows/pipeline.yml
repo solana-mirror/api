@@ -14,17 +14,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust
       uses: actions-rs/toolchain@v1
       with: 
         toolchain: stable
         override: true
     
-    - name: Build
       run: cargo build --verbose
 
     # Enable tests once they are written
-    # - name: Run tests
     #   run: cargo test --verbose
 
   deploy:
@@ -33,11 +30,9 @@ jobs:
     if: github.ref == 'refs/heads/master' 
 
     steps: 
-      - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with: 
           host: ${{ secrets.GCP_VPS_HOST }}
           username: ${{ secrets.GCP_VPS_USER }}
           key: ${{ secrets.GCP_PRIVATE_KEY }}
           script: ./deploy-api.sh
-            
