@@ -5,9 +5,9 @@ use crate::{
     },
     coingecko::get_coingecko_id,
     price::get_price,
+    transactions::types::FormattedAmount,
     utils::clean_string,
     Error, SOL_ADDRESS,
-    transactions::types::FormattedAmount
 };
 use core::str;
 use futures::future::join_all;
@@ -46,17 +46,9 @@ pub async fn get_parsed_accounts(
 
 /// Fetches the SOL account associated with the given address.
 async fn get_solana(client: &SolanaMirrorClient, pubkey: &Pubkey) -> ParsedAta {
-    let price = get_price(
-        client,
-        Pubkey::from_str(SOL_ADDRESS).unwrap(),
-        Some(9)
-    )
-    .await;
+    let price = get_price(client, Pubkey::from_str(SOL_ADDRESS).unwrap(), Some(9)).await;
 
-    let amount = client
-        .get_balance(pubkey, None)
-        .await
-        .unwrap_or(0);
+    let amount = client.get_balance(pubkey, None).await.unwrap_or(0);
 
     let formatted = amount as f64 / LAMPORTS_PER_SOL as f64;
 
@@ -69,7 +61,10 @@ async fn get_solana(client: &SolanaMirrorClient, pubkey: &Pubkey) -> ParsedAta {
         symbol: "SOL".to_string(),
         image: "https://cryptologos.cc/logos/solana-sol-logo.png?v=032".to_string(),
         price,
-        balance: FormattedAmount { amount: amount.to_string(), formatted },
+        balance: FormattedAmount {
+            amount: amount.to_string(),
+            formatted,
+        },
     }
 }
 
@@ -113,12 +108,7 @@ async fn parse_account(
     let formatted = info.token_amount.ui_amount;
 
     let mint_pubkey = Pubkey::from_str(mint).unwrap();
-    let price = get_price(
-        client,
-        mint_pubkey,
-        Some(decimals),
-    )
-    .await;
+    let price = get_price(client, mint_pubkey, Some(decimals)).await;
 
     let coingecko_id = get_coingecko_id(mint).await;
     let image = fetch_image(&metadata).await;
@@ -132,7 +122,10 @@ async fn parse_account(
         symbol: metadata.symbol,
         image,
         price,
-        balance: FormattedAmount { amount: amount.to_string(), formatted },
+        balance: FormattedAmount {
+            amount: amount.to_string(),
+            formatted,
+        },
     })
 }
 

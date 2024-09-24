@@ -1,5 +1,5 @@
-use std::env;
 use crate::{Error, Page};
+use std::env;
 
 pub fn clean_string(s: String) -> String {
     s.trim_matches('\0').trim_matches('"').to_string()
@@ -41,13 +41,13 @@ pub fn create_batches<T: Clone>(
 
 pub fn parse_page(index: Option<&str>) -> Result<Option<Page>, Error> {
     if index.is_none() {
-        return Ok(None)
+        return Ok(None);
     }
 
     let split: Vec<&str> = index.unwrap().split('-').collect();
 
     if split.len() != 2 {
-        return Err(Error::InvalidIndex)
+        return Err(Error::InvalidIndex);
     }
 
     let start_idx = match split[0].parse::<usize>() {
@@ -60,12 +60,8 @@ pub fn parse_page(index: Option<&str>) -> Result<Option<Page>, Error> {
     };
 
     if end_idx < start_idx {
-        return Err(Error::InvalidIndex)
+        return Err(Error::InvalidIndex);
     }
-        
-    Ok(Some(Page {
-        start_idx,
-        end_idx,
-    }))
-}
 
+    Ok(Some(Page { start_idx, end_idx }))
+}

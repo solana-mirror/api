@@ -67,14 +67,14 @@ pub struct TokenAmount {
     pub ui_amount_string: String,
 }
 
-// get_balance 
+// get_balance
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BalanceResultData {
     pub context: Context,
     pub value: u64,
 }
 
-// get_account_info 
+// get_account_info
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccountDataResultData {
@@ -111,7 +111,7 @@ pub struct Decimals {
     pub ui_amount_string: String,
 }
 
-// get_signatures_for_address 
+// get_signatures_for_address
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Signature {
@@ -125,7 +125,7 @@ pub struct Signature {
     pub confirmation_status: Option<String>,
 }
 
-// get_transactions 
+// get_transactions
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Transaction {

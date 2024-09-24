@@ -10,7 +10,7 @@ use std::str::FromStr;
 pub async fn get_price(
     client: &SolanaMirrorClient,
     token: Pubkey,
-    decimals: Option<u8>
+    decimals: Option<u8>,
 ) -> Option<f64> {
     let jupiter = JupiterSwapApiClient::new("https://quote-api.jup.ag/v6".to_string());
     let usdc_pubkey = Pubkey::from_str(USDC_ADDRESS).unwrap();
@@ -32,7 +32,7 @@ pub async fn get_price(
                     }),
                 )
                 .await;
-    
+
             response.unwrap().result.value.decimals
         }
     };

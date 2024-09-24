@@ -1,8 +1,11 @@
-use std::{collections::HashMap, fs::File, io::BufReader};
+use std::{collections::HashMap, env, fs::File, io::BufReader};
 
-use reqwest::Client;
+use reqwest::{
+    header::{HeaderMap, HeaderValue},
+    Client,
+};
 use serde::Deserialize;
-use serde_json::{Value, from_reader};
+use serde_json::{from_reader, Value};
 
 use crate::{chart::types::GetCoinMarketChartParams, Error};
 
@@ -49,23 +52,48 @@ pub async fn get_coingecko_id(mint: &str) -> Option<String> {
     }
 }
 
-pub struct CoingeckoClient{
+pub struct CoingeckoClient {
     pub inner_client: Client,
+    pub api_key: Option<String>,
 }
 
 impl CoingeckoClient {
     pub fn new() -> Self {
+        let api_key = match env::var("COINGECKO_API_KEY") {
+            Ok(key) => Some(key),
+            _ => None,
+        };
+
         Self {
             inner_client: Client::new(),
+            api_key,
         }
     }
 
     pub fn from_client(inner_client: &Client) -> Self {
-        Self { inner_client: inner_client.clone() }
+        let api_key = match env::var("COINGECKO_API_KEY") {
+            Ok(key) => Some(key),
+            _ => None,
+        };
+
+        Self {
+            inner_client: inner_client.clone(),
+            api_key,
+        }
     }
 
     async fn make_request(&self, endpoint: &str, query: &[(&str, String)]) -> Result<Value, Error> {
-        let request = self.inner_client.get(endpoint).query(query);
+        let mut headers = HeaderMap::new();
+
+        if let Some(key) = &self.api_key {
+            headers.insert("X-CG-API-KEY", HeaderValue::from_str(key).unwrap());
+        };
+
+        let request = self
+            .inner_client
+            .get(endpoint)
+            .headers(headers)
+            .query(query);
 
         match request.send().await {
             Ok(response) => {
@@ -74,8 +102,8 @@ impl CoingeckoClient {
                     .await
                     .map_err(|_| Error::ParseError)?;
                 Ok(res)
-            },
-            Err(_) => Err(Error::FetchError)
+            }
+            Err(_) => Err(Error::FetchError),
         }
     }
 
