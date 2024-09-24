@@ -9,8 +9,8 @@ use std::str::FromStr;
 
 #[get("/transactions/<address>?<index>")]
 pub async fn transactions_handler(
-    address: &str, 
-    index: Option<&str>
+    address: &str,
+    index: Option<&str>,
 ) -> Result<Json<TransactionResponse>, Status> {
     let client = SolanaMirrorClient::new(get_rpc());
 
@@ -21,7 +21,7 @@ pub async fn transactions_handler(
 
     let page = match parse_page(index) {
         Ok(p) => p,
-        Err(_) => return Err(Status::BadRequest)
+        Err(_) => return Err(Status::BadRequest),
     };
 
     let parsed_transactions = get_parsed_transactions(&client, &pubkey, page).await;
@@ -38,4 +38,3 @@ pub async fn transactions_handler(
         }
     }
 }
-

@@ -16,11 +16,11 @@ pub enum Error {
     InvalidTimeframe,
     FetchError,
     ParseError,
-    TooManyRequests
+    TooManyRequests,
 }
 
 #[derive(Debug)]
 pub struct Page {
     pub start_idx: usize,
-    pub end_idx: usize
+    pub end_idx: usize,
 }

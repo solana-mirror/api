@@ -1,11 +1,11 @@
-use std::pin::Pin;
 use std::future::Future;
+use std::pin::Pin;
 
 use crate::Error;
 use base64::Engine;
 use reqwest::Client;
-use serde::{self, Deserialize, Serialize, de::DeserializeOwned};
-use serde_json::{Value, from_value};
+use serde::{self, de::DeserializeOwned, Deserialize, Serialize};
+use serde_json::{from_value, Value};
 use solana_sdk::pubkey::Pubkey;
 use types::{
     AccountDataResultData, AccountsResultData, BalanceResultData, DecimalsResultData, Signature,
@@ -50,8 +50,8 @@ pub struct JsonRpcRequest<Params> {
 pub struct JsonRpcResponse<Result> {
     pub jsonrpc: String,
     pub result: Result,
-    pub id: String
-} 
+    pub id: String,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JsonRpcError {
@@ -130,7 +130,7 @@ pub struct GetDecimalsConfig {
 
 pub type GetDecimalsParams = (String, Option<GetDecimalsConfig>);
 
-// get_signatures_for_address 
+// get_signatures_for_address
 pub type GetSignaturesForAddressResponse = JsonRpcResponse<Vec<Signature>>;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -143,7 +143,7 @@ pub struct GetSignaturesForAddressConfig {
 
 pub type GetSignaturesForAddressParams = (String, Option<GetSignaturesForAddressConfig>);
 
-// get_transactions 
+// get_transactions
 pub type GetTransactionResponse = JsonRpcResponse<Option<Transaction>>;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -156,11 +156,11 @@ pub struct GetTransactionConfig {
 
 pub type GetTransactionParams = (String, Option<GetTransactionConfig>);
 
-// TODO: implement on all methods 
+// TODO: implement on all methods
 #[allow(dead_code)]
-async fn retry<T, F>(callback: F, max_retries: u8) -> Result<T, Error> 
-where 
-    F: Fn() -> Pin<Box<dyn Future<Output = Result<T, Error>> >>,
+async fn retry<T, F>(callback: F, max_retries: u8) -> Result<T, Error>
+where
+    F: Fn() -> Pin<Box<dyn Future<Output = Result<T, Error>>>>,
 {
     for attempt in 0..=max_retries {
         match callback().await {
@@ -171,7 +171,7 @@ where
                 } else {
                     match e {
                         Error::TooManyRequests => continue,
-                        _ => return Err(e)
+                        _ => return Err(e),
                     }
                 }
             }
@@ -182,7 +182,7 @@ where
 }
 
 fn deserialize<T: DeserializeOwned>(res: &Value) -> Result<T, Error> {
-    // Try deserializing into an error first 
+    // Try deserializing into an error first
     if let Ok(deserialized_err) = from_value::<JsonRpcError>(res.clone()) {
         match deserialized_err.error.code {
             429 => return Err(Error::TooManyRequests),
@@ -192,7 +192,7 @@ fn deserialize<T: DeserializeOwned>(res: &Value) -> Result<T, Error> {
 
     match from_value::<T>(res.clone()) {
         Ok(res) => Ok(res),
-        Err(_) => Err(Error::ParseError)
+        Err(_) => Err(Error::ParseError),
     }
 }
 
@@ -244,12 +244,16 @@ impl SolanaMirrorClient {
         }
     }
 
-    async fn make_request<T: Serialize>(&self, method: JsonRpcMethod, params: Option<T>) -> Result<Value, Error> {
+    async fn make_request<T: Serialize>(
+        &self,
+        method: JsonRpcMethod,
+        params: Option<T>,
+    ) -> Result<Value, Error> {
         let body = &JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             method: method.to_string(),
             params,
-            id: Uuid::new_v4().to_string()
+            id: Uuid::new_v4().to_string(),
         };
 
         let serialized = match serde_json::to_string(body) {
@@ -272,7 +276,7 @@ impl SolanaMirrorClient {
                     .map_err(|_| Error::ParseError)?;
                 Ok(res)
             }
-            Err(_) => Err(Error::FetchError)
+            Err(_) => Err(Error::FetchError),
         }
     }
 
@@ -284,7 +288,9 @@ impl SolanaMirrorClient {
     ) -> Result<GetTokenAccountsByOwnerResponse, Error> {
         let params: GetTokenAccountsByOwnerParams = (owner.to_string(), filter, config);
 
-        let res = self.make_request(JsonRpcMethod::GetTokenAccountsByOwner, Some(params)).await?;
+        let res = self
+            .make_request(JsonRpcMethod::GetTokenAccountsByOwner, Some(params))
+            .await?;
         println!("{}", res);
         deserialize::<GetTokenAccountsByOwnerResponse>(&res)
     }
@@ -296,10 +302,12 @@ impl SolanaMirrorClient {
     ) -> Result<u64, Error> {
         let params: GetBalanceParams = (owner.to_string(), config);
 
-        let res = self.make_request(JsonRpcMethod::GetBalance, Some(params)).await?;
+        let res = self
+            .make_request(JsonRpcMethod::GetBalance, Some(params))
+            .await?;
         match deserialize::<GetBalanceResponse>(&res) {
             Ok(bal) => Ok(bal.result.unwrap().value),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
@@ -310,7 +318,9 @@ impl SolanaMirrorClient {
     ) -> Result<Vec<u8>, Error> {
         let params: GetAccountDataParams = (pubkey.to_string(), config);
 
-        let res = self.make_request(JsonRpcMethod::GetAccountInfo, Some(params)).await?;
+        let res = self
+            .make_request(JsonRpcMethod::GetAccountInfo, Some(params))
+            .await?;
         match deserialize::<GetAccountDataResponse>(&res) {
             Ok(acc) => {
                 let base64_data = &acc.result.value.data[0];
@@ -319,7 +329,7 @@ impl SolanaMirrorClient {
                     .expect("Failed to decode base64 data.");
 
                 Ok(decoded_data)
-            },
+            }
             Err(e) => Err(e),
         }
     }
@@ -331,7 +341,9 @@ impl SolanaMirrorClient {
     ) -> Result<GetDecimalsResponse, Error> {
         let params: GetDecimalsParams = (mint.to_string(), config);
 
-        let res = self.make_request(JsonRpcMethod::GetDecimals, Some(params)).await?;
+        let res = self
+            .make_request(JsonRpcMethod::GetDecimals, Some(params))
+            .await?;
         deserialize::<GetDecimalsResponse>(&res)
     }
 
@@ -342,7 +354,9 @@ impl SolanaMirrorClient {
     ) -> Result<GetSignaturesForAddressResponse, Error> {
         let params: GetSignaturesForAddressParams = (address.to_string(), config);
 
-        let res = self.make_request(JsonRpcMethod::GetSignaturesForAddress, Some(params)).await?;
+        let res = self
+            .make_request(JsonRpcMethod::GetSignaturesForAddress, Some(params))
+            .await?;
         deserialize::<GetSignaturesForAddressResponse>(&res)
     }
 

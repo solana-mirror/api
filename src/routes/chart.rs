@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
-use reqwest::Client;
 use lib::{
-    coingecko::CoingeckoClient,
     chart::{get_chart_data, types::ChartDataWithPrice, Timeframe},
     client::SolanaMirrorClient,
+    coingecko::CoingeckoClient,
     utils::get_rpc,
-    Error::{TooManyRequests, FetchError, InvalidAddress, InvalidTimeframe, ParseError},
+    Error::{FetchError, InvalidAddress, InvalidTimeframe, ParseError, TooManyRequests},
 };
+use reqwest::Client;
 use rocket::{http::Status, serde::json::Json};
 use spl_token::solana_program::pubkey::Pubkey;
 
@@ -16,7 +16,6 @@ pub async fn chart_handler(
     address: &str,
     timeframe: &str,
 ) -> Result<Json<Vec<ChartDataWithPrice>>, Status> {
-
     // Gets the last character of the timeframe string (either "d" or "h")
     let timeframe_str = &timeframe[timeframe.len() - 1..];
     let parsed_timeframe = match Timeframe::new(timeframe_str) {
@@ -55,7 +54,7 @@ pub async fn chart_handler(
                 FetchError => Status::InternalServerError,
                 InvalidAddress => Status::BadRequest,
                 InvalidTimeframe => Status::BadRequest,
-                _ => Status::InternalServerError
+                _ => Status::InternalServerError,
             };
             Err(status_code)
         }

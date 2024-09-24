@@ -8,7 +8,10 @@ use crate::{
     client::{
         types::{TokenBalance, Transaction},
         GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient,
-    }, transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction}, utils::create_batches, Error, Page, SOL_ADDRESS
+    },
+    transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction},
+    utils::create_batches,
+    Error, Page, SOL_ADDRESS,
 };
 
 use self::types::TransactionResponse;
@@ -25,15 +28,15 @@ pub async fn get_parsed_transactions(
             if p.start_idx >= signatures.len() {
                 return Ok(TransactionResponse {
                     count: signatures.len(),
-                    transactions: Vec::<ParsedTransaction>::new()
+                    transactions: Vec::<ParsedTransaction>::new(),
                 });
             } else if p.end_idx >= signatures.len() {
                 vec![signatures[p.start_idx..].to_vec()]
             } else {
                 vec![signatures[p.start_idx..p.end_idx].to_vec()]
             }
-        },
-        None => create_batches(&signatures, 900, None)
+        }
+        None => create_batches(&signatures, 900, None),
     };
 
     let mut txs: Vec<Transaction> = Vec::new();
@@ -60,10 +63,10 @@ pub async fn get_parsed_transactions(
         .collect::<Vec<ParsedTransaction>>();
 
     parsed_transactions.sort_by_key(|x| x.block_time);
-    
+
     Ok(TransactionResponse {
         transactions: parsed_transactions,
-        count: signatures.len()
+        count: signatures.len(),
     })
 }
 
@@ -75,7 +78,7 @@ async fn get_signatures(
     let mut should_continue: bool = true;
     let mut signatures: Vec<String> = Vec::new();
 
-    // Get signatures for the address until the length 
+    // Get signatures for the address until the length
     // is not the max (1000) and set `before` accordingly
     while should_continue {
         let response = client
@@ -164,7 +167,9 @@ fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransact
         .collect();
 
     for pre_balance in pre_token_balances {
-        let balance_change = balances.entry(pre_balance.mint).or_insert(BalanceChange::default());
+        let balance_change = balances
+            .entry(pre_balance.mint)
+            .or_insert(BalanceChange::default());
 
         balance_change.pre = FormattedAmount {
             amount: pre_balance.ui_token_amount.amount,
@@ -173,7 +178,9 @@ fn parse_transaction(tx: &Transaction, signer: &Pubkey) -> Result<ParsedTransact
     }
 
     for post_balance in post_token_balances {
-        let balance_change = balances.entry(post_balance.mint).or_insert(BalanceChange::default());
+        let balance_change = balances
+            .entry(post_balance.mint)
+            .or_insert(BalanceChange::default());
 
         balance_change.post = FormattedAmount {
             amount: post_balance.ui_token_amount.amount,

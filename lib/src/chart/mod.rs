@@ -68,7 +68,9 @@ fn get_balance_states(txs: &Vec<ParsedTransaction>) -> Vec<ChartData> {
     for tx in txs {
         let mut state = ChartData {
             timestamp: tx.block_time,
-            balances: states.last().map_or(Default::default(), |last_state| last_state.balances.clone())
+            balances: states
+                .last()
+                .map_or(Default::default(), |last_state| last_state.balances.clone()),
         };
 
         for (mint, formatted_balance) in &tx.balances {
@@ -92,7 +94,6 @@ fn filter_balance_states(
     timeframe: Timeframe,
     range: u8,
 ) -> Vec<ChartData> {
-
     if states.is_empty() {
         return Vec::new();
     }
@@ -133,7 +134,7 @@ fn filter_balance_states(
         }
 
         // Fill empty periods (eg. last state was 5 days ago, copy that state until today)
-        // The main use of this is being able to fill the right price in 
+        // The main use of this is being able to fill the right price in
         if let Some(last_state) = filtered_states.last() {
             if last_state.timestamp != t {
                 filtered_states.push(ChartData {
@@ -144,7 +145,7 @@ fn filter_balance_states(
         }
     }
 
-    // We push one last state with the current timestamp 
+    // We push one last state with the current timestamp
     // in case the balance changes from day start to present
     if let Some(last_state) = filtered_states.last() {
         filtered_states.push(ChartData {
@@ -206,15 +207,11 @@ pub async fn get_price_states(
             let price = if i == last_state_index {
                 // Get current price from Jup for accurracy
                 let decimals = if mint == SOL_ADDRESS { Some(9) } else { None };
-                get_price(
-                    client,
-                    Pubkey::from_str(mint).unwrap(),
-                    decimals
-                )
-                .await
-                .unwrap_or(0.0)
+                get_price(client, Pubkey::from_str(mint).unwrap(), decimals)
+                    .await
+                    .unwrap_or(0.0)
             } else {
-                // Get the right index from the Coingecko prices 
+                // Get the right index from the Coingecko prices
                 let index = ((timestamp - from) / time_step) as usize;
                 coingecko_prices
                     .get(mint)
