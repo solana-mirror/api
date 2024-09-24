@@ -42,7 +42,13 @@ impl Fairing for CORS {
     }
 
     async fn on_response<'r>(&self, _request: &'r Request<'_>, response: &mut Response<'r>) {
-        response.set_header(Header::new("Access-Control-Allow-Origin", "http://localhost:3000"));
+        let allowed_origins = vec!["http://localhost:3000", "https://solanamirror.xyz"];
+        if let Some(origin) = _request.headers().get_one("Origin") {
+            if allowed_origins.contains(&origin) {
+                response.set_header(Header::new("Access-Control-Allow-Origin", origin));
+            }
+        }
+        
         response.set_header(Header::new("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS"));
         response.set_header(Header::new("Access-Control-Allow-Headers", "Content-Type, Authorization"));
         response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
