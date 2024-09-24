@@ -24,6 +24,9 @@ jobs:
     - name: Build Docker image
       run: docker build -t solanamirror/api:latest .
 
+    - name: Save Docker image to file
+      run: docker save -o solanamirror-api-latest.tar solanamirror/api:latest
+
     - name: Upload Docker image as artifact
       uses: actions/upload-artifact@v3
       with:
