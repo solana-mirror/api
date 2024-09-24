@@ -1,6 +1,6 @@
-use std::{collections::HashMap, fs::File, io::BufReader};
+use std::{collections::HashMap, env, fs::File, io::BufReader};
 
-use reqwest::Client;
+use reqwest::{header::{HeaderMap, HeaderValue}, Client};
 use serde::Deserialize;
 use serde_json::{Value, from_reader};
 
@@ -51,21 +51,34 @@ pub async fn get_coingecko_id(mint: &str) -> Option<String> {
 
 pub struct CoingeckoClient{
     pub inner_client: Client,
+    pub api_key: String,
 }
 
 impl CoingeckoClient {
     pub fn new() -> Self {
+        let api_key = env::var("COINGECKO_API_KEY").expect("COINGECKO_API_KEY must be set");
         Self {
             inner_client: Client::new(),
+            api_key,
         }
     }
 
     pub fn from_client(inner_client: &Client) -> Self {
-        Self { inner_client: inner_client.clone() }
+        let api_key = env::var("COINGECKO_API_KEY").expect("COINGECKO_API_KEY must be set");
+        Self { 
+            inner_client: inner_client.clone(),
+            api_key,
+        }
     }
 
     async fn make_request(&self, endpoint: &str, query: &[(&str, String)]) -> Result<Value, Error> {
-        let request = self.inner_client.get(endpoint).query(query);
+        let mut headers = HeaderMap::new();
+        headers.insert("X-CG-API-KEY", HeaderValue::from_str(&self.api_key).unwrap());
+
+        let request = self.inner_client
+            .get(endpoint)
+            .headers(headers)
+            .query(query);
 
         match request.send().await {
             Ok(response) => {

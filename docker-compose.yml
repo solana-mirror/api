@@ -8,6 +8,7 @@ services:
       - "8000:8000"
     environment:
       - RPC=${RPC} 
+      - COINGECKO_API_KEY=${COINGECKO_API_KEY}
     restart: always
 
   watchtower:
