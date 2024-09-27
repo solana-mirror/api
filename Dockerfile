@@ -1,11 +1,12 @@
 FROM rust:1.75 as builder
 
 WORKDIR /usr/src/solana-mirror-api
-COPY Cargo.lock Cargo.toml
+
+COPY Cargo.lock Cargo.toml ./
+
 COPY . .
 
 RUN cargo build --release
-
 
 FROM debian:latest
 RUN apt-get update && apt-get install -y \
@@ -18,7 +19,11 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /usr/src/solana-mirror-api
 
 COPY --from=builder /usr/src/solana-mirror-api/target/release/solana-mirror-api .
+
+COPY --from=builder /usr/src/solana-mirror-api/lib/src/coingecko.json ./lib/src/coingecko.json
+
 RUN chmod +x ./solana-mirror-api
 
 EXPOSE 8000
+
 CMD ["./solana-mirror-api"]
