@@ -83,16 +83,9 @@ impl CoingeckoClient {
     }
 
     async fn make_request(&self, endpoint: &str, query: &[(&str, String)]) -> Result<Value, Error> {
-        let mut headers = HeaderMap::new();
-
-        if let Some(key) = &self.api_key {
-            headers.insert("X-CG-API-KEY", HeaderValue::from_str(key).unwrap());
-        };
-
         let request = self
             .inner_client
             .get(endpoint)
-            .headers(headers)
             .query(query);
 
         match request.send().await {
@@ -112,13 +105,18 @@ impl CoingeckoClient {
         params: GetCoinMarketChartParams,
     ) -> Result<Vec<(u64, f64)>, Error> {
         let endpoint = format!("{}/coins/{}/market_chart/range", BASE_URL, params.id);
-        let query = &[
+
+        let mut query = vec![
             ("vs_currency", params.vs_currency),
             ("from", params.from.to_string()),
             ("to", params.to.to_string()),
         ];
 
-        let res = self.make_request(&endpoint, query).await?;
+        if let Some(key) = &self.api_key {
+            query.push(("x_cg_demo_api_key", key.clone()));
+        };
+
+        let res = self.make_request(&endpoint, &query).await?;
 
         // TODO: set a type for the response and deserialize with serde
         let prices = res["prices"]
