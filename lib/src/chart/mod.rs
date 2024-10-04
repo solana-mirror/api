@@ -4,7 +4,10 @@ use std::{
     str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
-use types::{ChartData, ChartDataWithPrice, FormattedAmountWithPrice, GetCoinMarketChartParams};
+use types::{
+    ChartData, ChartDataWithPrice, FormattedAmountWithPrice, GetCoinMarketChartParams,
+    MinimalChartData,
+};
 
 use crate::{
     client::SolanaMirrorClient,

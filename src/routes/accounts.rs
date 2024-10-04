@@ -22,7 +22,6 @@ pub async fn accounts_handler(address: &str) -> Result<Json<Vec<ParsedAta>>, Sta
     match parsed_accounts {
         Ok(parsed_accounts) => Ok(Json(parsed_accounts)),
         Err(err) => {
-            println!("{:?}", err);
             let status_code = match err {
                 Error::InvalidAddress => Status::BadRequest,
                 Error::TooManyRequests => Status::TooManyRequests,

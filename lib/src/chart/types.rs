@@ -24,6 +24,20 @@ pub struct ChartDataWithPrice {
     pub usd_value: f64,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MinimalChartData {
+    pub timestamp: i64,
+    #[serde(rename = "usdValue")]
+    pub usd_value: f64,
+}
+
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+pub enum ChartResponse {
+    Detailed(Vec<ChartDataWithPrice>),
+    Minimal(Vec<MinimalChartData>),
+}
+
 pub struct GetCoinMarketChartParams {
     pub id: String,
     pub vs_currency: String,
