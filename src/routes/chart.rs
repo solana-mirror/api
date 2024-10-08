@@ -1,7 +1,11 @@
 use std::str::FromStr;
 
 use lib::{
-    chart::{get_chart_data, types::ChartDataWithPrice, Timeframe},
+    chart::{
+        get_chart_data,
+        types::{ChartResponse, MinimalChartData},
+        Timeframe,
+    },
     client::SolanaMirrorClient,
     coingecko::CoingeckoClient,
     utils::get_rpc,
@@ -11,11 +15,12 @@ use reqwest::Client;
 use rocket::{http::Status, serde::json::Json};
 use spl_token::solana_program::pubkey::Pubkey;
 
-#[get("/chart/<address>/<timeframe>")]
+#[get("/chart/<address>/<timeframe>?<detailed>")]
 pub async fn chart_handler(
     address: &str,
     timeframe: &str,
-) -> Result<Json<Vec<ChartDataWithPrice>>, Status> {
+    detailed: Option<bool>,
+) -> Result<Json<ChartResponse>, Status> {
     // Gets the last character of the timeframe string (either "d" or "h")
     let timeframe_str = &timeframe[timeframe.len() - 1..];
     let parsed_timeframe = match Timeframe::new(timeframe_str) {
@@ -46,7 +51,21 @@ pub async fn chart_handler(
     let chart_data = get_chart_data(&client, &coingecko, &pubkey, parsed_timeframe, range).await;
 
     match chart_data {
-        Ok(data) => Ok(Json(data)),
+        Ok(data) => {
+            if detailed.unwrap_or(false) {
+                Ok(Json(ChartResponse::Detailed(data)))
+            } else {
+                let minimal_chart_data: Vec<MinimalChartData> = data
+                    .iter()
+                    .map(|x| MinimalChartData {
+                        timestamp: x.timestamp,
+                        usd_value: x.usd_value,
+                    })
+                    .collect();
+
+                Ok(Json(ChartResponse::Minimal(minimal_chart_data)))
+            }
+        }
         Err(err) => {
             let status_code = match err {
                 ParseError => Status::InternalServerError,

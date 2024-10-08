@@ -83,10 +83,7 @@ impl CoingeckoClient {
     }
 
     async fn make_request(&self, endpoint: &str, query: &[(&str, String)]) -> Result<Value, Error> {
-        let request = self
-            .inner_client
-            .get(endpoint)
-            .query(query);
+        let request = self.inner_client.get(endpoint).query(query);
 
         match request.send().await {
             Ok(response) => {
