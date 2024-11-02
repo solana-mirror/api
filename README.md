@@ -47,7 +47,7 @@ Gets the wallet's transactions and parses the balances before and after the tx o
 
 ```json
 {
-    transactions: [{
+    "transactions": [{
         "blockTime": 0,
         "signatures": [""],
         "logs" [""],
@@ -65,7 +65,7 @@ Gets the wallet's transactions and parses the balances before and after the tx o
         },
         "parsedInstructions": [""]
     }],
-    count: 1
+    "count": 1
 }
 ```
 

@@ -1,5 +1,3 @@
-use std::env;
-
 use dotenv::dotenv;
 #[macro_use]
 extern crate rocket;

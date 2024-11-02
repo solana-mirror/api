@@ -1,9 +1,6 @@
-use std::{collections::HashMap, env, fs::File, io::BufReader, path::PathBuf};
+use std::{collections::HashMap, env, fs::File, io::BufReader};
 
-use reqwest::{
-    header::{HeaderMap, HeaderValue},
-    Client,
-};
+use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{from_reader, Value};
 
