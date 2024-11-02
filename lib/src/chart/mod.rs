@@ -6,7 +6,6 @@ use std::{
 };
 use types::{
     ChartData, ChartDataWithPrice, FormattedAmountWithPrice, GetCoinMarketChartParams,
-    MinimalChartData,
 };
 
 use crate::{
@@ -107,28 +106,37 @@ fn filter_balance_states(
         .unwrap()
         .as_secs() as i64;
 
+    // Calculate how old the wallet is (in timeframe units)
+    let oldest_tx_timestamp = states[0].timestamp;
+    let wallet_age = ((now - oldest_tx_timestamp) as f64 / t_seconds as f64).ceil() as u8;
+    
+    // Use the smaller of the requested range or wallet age
+    // Add 1 to include the current period
+    let adjusted_range = std::cmp::min(range, wallet_age + 1);
+
     let mut filtered_states: Vec<ChartData> = Vec::new();
 
     let final_t = (now as f64 / t_seconds as f64).floor() as i64 * t_seconds;
-    let initial_t = final_t - (range as i64 * t_seconds);
+    let initial_t = final_t - (adjusted_range as i64 * t_seconds);
 
     let mut last_idx = 0;
 
-    for i in 0..range {
+    for i in 0..adjusted_range {
         let t = initial_t + (i as i64 * t_seconds);
 
         for j in last_idx..states.len() {
+            // Found a transaction that happened after our current period
             if states[j].timestamp >= t {
-                // If it's checking the first state, we're not sure
-                // if it's between the day/hour being checked and the next one
-                if j == 0 {
-                    break;
-                }
-
-                let previous_state = &states[j - 1];
+                let state_to_use = if j > 0 {
+                    &states[j-1] // Use the first transaction's state
+                } else {
+                    &states[j] // Use previous state
+                };
+                
+                // Use the state right before this transaction as the state for this period
                 filtered_states.push(ChartData {
                     timestamp: t,
-                    balances: previous_state.balances.clone(),
+                    balances: state_to_use.balances.clone(),
                 });
 
                 last_idx = j;
@@ -148,7 +156,7 @@ fn filter_balance_states(
         }
     }
 
-    // We push one last state with the current timestamp
+    // Push one last state with the current timestamp
     // in case the balance changes from day start to present
     if let Some(last_state) = filtered_states.last() {
         filtered_states.push(ChartData {
