@@ -106,13 +106,10 @@ fn filter_balance_states(
         .unwrap()
         .as_secs() as i64;
 
-    // Calculate how old the wallet is (in timeframe units)
     let oldest_tx_timestamp = states[0].timestamp;
     let wallet_age = ((now - oldest_tx_timestamp) as f64 / t_seconds as f64).ceil() as u8;
-    
-    // Use the smaller of the requested range or wallet age
-    // Add 1 to include the current period
-    let adjusted_range = std::cmp::min(range, wallet_age + 1);
+
+    let adjusted_range = std::cmp::min(range, wallet_age);
 
     let mut filtered_states: Vec<ChartData> = Vec::new();
 
@@ -125,15 +122,13 @@ fn filter_balance_states(
         let t = initial_t + (i as i64 * t_seconds);
 
         for j in last_idx..states.len() {
-            // Found a transaction that happened after our current period
             if states[j].timestamp >= t {
                 let state_to_use = if j > 0 {
-                    &states[j-1] // Use the first transaction's state
+                    &states[j-1]
                 } else {
-                    &states[j] // Use previous state
+                    &states[j]
                 };
-                
-                // Use the state right before this transaction as the state for this period
+
                 filtered_states.push(ChartData {
                     timestamp: t,
                     balances: state_to_use.balances.clone(),
