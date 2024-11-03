@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::transactions::types::FormattedAmount;
+use crate::types::FormattedAmount;
 
 #[derive(Default, Debug, Serialize)]
 pub struct ParsedAta {
@@ -16,7 +16,7 @@ pub struct ParsedAta {
     pub balance: FormattedAmount,
 }
 
-#[derive(Default, Debug, Serialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct ParsedMetadata {
     pub name: String,
     pub symbol: String,

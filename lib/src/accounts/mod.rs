@@ -4,8 +4,9 @@ use crate::{
         GetTokenAccountsByOwnerFilter, SolanaMirrorClient,
     },
     coingecko::get_coingecko_id,
+    dapps::{raydium::get_parsed_positions, types::ParsedPosition},
     price::get_price,
-    transactions::types::FormattedAmount,
+    types::FormattedAmount,
     utils::clean_string,
     Error, SOL_ADDRESS,
 };
@@ -41,6 +42,28 @@ pub async fn get_parsed_accounts(
     }
 
     parsed_accounts.push(get_solana(client, address).await);
+
+    let raydium_mints: Vec<&str> = parsed_accounts
+        .iter()
+        .filter(|x| (x.balance.amount == "1" && x.symbol == "RCL"))
+        .map(|x| x.mint.as_str())
+        .collect();
+
+    let parse_position_futures: Vec<_> = raydium_mints
+        .iter()
+        .map(|&mint| get_parsed_positions(client, mint))
+        .collect();
+
+    let parsed_positions: Vec<Result<ParsedPosition, Error>> =
+        join_all(parse_position_futures).await;
+
+    for result in parsed_positions {
+        match result {
+            Ok(parsed_position) => println!("{:?}", parsed_position),
+            Err(e) => return Err(e),
+        }
+    }
+
     Ok(parsed_accounts)
 }
 
