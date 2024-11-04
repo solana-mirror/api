@@ -1,18 +1,18 @@
+use serde::de::DeserializeOwned;
+use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
 
-use solana_sdk::pubkey::Pubkey;
-use types::{Pool, Position};
-
 use crate::{
-    accounts::types::ParsedMetadata,
     client::{GetAccountDataConfig, SolanaMirrorClient},
     dapps::types::{ProtocolInfo, TokenPosition},
     price::get_price,
     types::{FormattedAmount, FormattedAmountWithPrice},
+    utils::{fetch_image, fetch_metadata},
     Error,
 };
 
 use super::types::ParsedPosition;
+use types::{Pool, Position};
 
 pub mod types;
 
@@ -20,22 +20,29 @@ const RAYDIUM_CL_PROGRAM_ID: &str = "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWq
 
 pub async fn get_parsed_positions(
     client: &SolanaMirrorClient,
-    mint: &str,
+    mint_protocol: &str,
 ) -> Result<ParsedPosition, Error> {
-    let position_address = get_position_address(mint).unwrap();
+    let position_address = get_position_address(mint_protocol).unwrap();
     let position = get_position_data(client, &position_address).await?;
     let pool = get_pool_data(client, &position.pool_id).await?;
 
-    let liquidity = position.liquidity;
-    let tick_lower = position.tick_lower;
-    let tick_upper = position.tick_upper;
-    let sqrt_price_x64 = pool.sqrt_price_x64;
+    let (amount_a, amount_b) = calculate_token_amounts(
+        position.liquidity,
+        position.tick_lower,
+        position.tick_upper,
+        pool.sqrt_price_x64,
+    );
 
-    let (amount_a, amount_b) =
-        calculate_token_amounts(liquidity, tick_lower, tick_upper, sqrt_price_x64);
+    let metadata_protocol = fetch_metadata(client, mint_protocol).await;
+    let image_protocol = fetch_image(&metadata_protocol).await;
 
     let mint_a = pool.mint_a;
     let mint_b = pool.mint_b;
+
+    let metadata_token_a = fetch_metadata(client, &mint_a.to_string()).await;
+    let metadata_token_b = fetch_metadata(client, &mint_b.to_string()).await;
+    let image_a = fetch_image(&metadata_token_a).await;
+    let image_b = fetch_image(&metadata_token_b).await;
 
     let decimals_a = pool.mint_decimals_a;
     let decimals_b = pool.mint_decimals_b;
@@ -55,12 +62,19 @@ pub async fn get_parsed_positions(
         (None, None) => None,
     };
 
-    // TODO: handle fetch/get metadata if already fetched for accounts, avoiding unnecessary requests
     let parsed_position = ParsedPosition {
         total_value_usd,
+        protocol: ProtocolInfo {
+            name: metadata_protocol.name,
+            symbol: metadata_protocol.symbol,
+            image: image_protocol,
+            program_id: Pubkey::from_str(RAYDIUM_CL_PROGRAM_ID).unwrap(),
+        },
         token_a: TokenPosition {
             mint: mint_a,
-            metadata: ParsedMetadata::default(),
+            name: metadata_token_a.name,
+            symbol: metadata_token_a.symbol,
+            image: image_a,
             amount: FormattedAmountWithPrice {
                 amount: FormattedAmount {
                     amount: amount_a.to_string(),
@@ -71,7 +85,9 @@ pub async fn get_parsed_positions(
         },
         token_b: TokenPosition {
             mint: mint_b,
-            metadata: ParsedMetadata::default(),
+            name: metadata_token_b.name,
+            symbol: metadata_token_b.symbol,
+            image: image_b,
             amount: FormattedAmountWithPrice {
                 amount: FormattedAmount {
                     amount: amount_b.to_string(),
@@ -80,12 +96,8 @@ pub async fn get_parsed_positions(
                 price: price_b.unwrap(),
             },
         },
-        protocol: ProtocolInfo {
-            name: "Raydium".to_string(),
-            program_id: Pubkey::from_str(RAYDIUM_CL_PROGRAM_ID).unwrap(),
-        },
         // TODO: not sure
-        fee_tier: "".to_string(),
+        fee_tier: String::new(),
     };
 
     Ok(parsed_position)
@@ -116,12 +128,7 @@ async fn get_position_data(
         Ok(encoded_position) => encoded_position,
         Err(_) => return Ok(Position::default()),
     };
-    decode_position_data(&encoded_position)
-}
-
-fn decode_position_data(data: &[u8]) -> Result<Position, Error> {
-    let position: Position = bincode::deserialize(data).map_err(|_| Error::ParseError)?;
-    Ok(position)
+    decode_data(&encoded_position)
 }
 
 async fn get_pool_data(client: &SolanaMirrorClient, pool_id: &Pubkey) -> Result<Pool, Error> {
@@ -134,12 +141,11 @@ async fn get_pool_data(client: &SolanaMirrorClient, pool_id: &Pubkey) -> Result<
             }),
         )
         .await?;
-    decode_pool_data(&encoded_pool)
+    decode_data(&encoded_pool)
 }
 
-fn decode_pool_data(data: &[u8]) -> Result<Pool, Error> {
-    let pool: Pool = bincode::deserialize(data).map_err(|_| Error::ParseError)?;
-    Ok(pool)
+fn decode_data<T: DeserializeOwned>(data: &[u8]) -> Result<T, Error> {
+    bincode::deserialize(data).map_err(|_| Error::ParseError)
 }
 
 fn calculate_token_amounts(

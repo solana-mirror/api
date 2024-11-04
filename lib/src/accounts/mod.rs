@@ -1,23 +1,22 @@
 use crate::{
     client::{
-        types::AccountData, GetAccountDataConfig, GetTokenAccountsByOwnerConfig,
-        GetTokenAccountsByOwnerFilter, SolanaMirrorClient,
+        types::AccountData, GetTokenAccountsByOwnerConfig, GetTokenAccountsByOwnerFilter,
+        SolanaMirrorClient,
     },
     coingecko::get_coingecko_id,
     dapps::{raydium::get_parsed_positions, types::ParsedPosition},
     price::get_price,
     types::FormattedAmount,
-    utils::clean_string,
+    utils::{fetch_image, fetch_metadata},
     Error, SOL_ADDRESS,
 };
 use core::str;
 use futures::future::join_all;
-use mpl_token_metadata::{accounts::Metadata, programs::MPL_TOKEN_METADATA_ID};
 use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_sdk::pubkey::Pubkey;
 use spl_token::id as spl_token_id;
-use std::{collections::HashMap, str::FromStr};
-use types::{ImageResponse, ParsedAta, ParsedMetadata};
+use std::str::FromStr;
+use types::ParsedAta;
 
 pub mod types;
 
@@ -150,74 +149,4 @@ async fn parse_account(
             formatted,
         },
     })
-}
-
-/// Fetches the metadata associated with the given mint address.
-async fn fetch_metadata(client: &SolanaMirrorClient, mint_address: &str) -> ParsedMetadata {
-    let mint_pubkey = Pubkey::from_str(mint_address).unwrap();
-    let mpl_program_id = Pubkey::from_str(MPL_TOKEN_METADATA_ID.to_string().as_str()).unwrap();
-
-    // Get the metadata account address associated with the mint
-    let (metadata_pubkey, _) = Pubkey::find_program_address(
-        &[
-            "metadata".as_ref(),
-            &mpl_program_id.to_bytes(),
-            &mint_pubkey.to_bytes(),
-        ],
-        &mpl_program_id,
-    );
-
-    let data = match client
-        .get_account_info(
-            &metadata_pubkey,
-            Some(GetAccountDataConfig {
-                commitment: None,
-                encoding: Some("jsonParsed".to_string()),
-            }),
-        )
-        .await
-    {
-        Ok(data) => data,
-        Err(_) => return ParsedMetadata::default(),
-    };
-
-    match Metadata::safe_deserialize(&data) {
-        Ok(metadata) => parse_metadata(metadata),
-        Err(_) => ParsedMetadata::default(),
-    }
-}
-
-/// Parses the given metadata.
-fn parse_metadata(metadata: Metadata) -> ParsedMetadata {
-    ParsedMetadata {
-        name: clean_string(metadata.name),
-        symbol: clean_string(metadata.symbol),
-        uri: clean_string(metadata.uri),
-    }
-}
-
-/// Fetches the image for each account
-async fn fetch_image(metadata: &ParsedMetadata) -> String {
-    // TODO: have a more generic image fallback
-    let predefined_images = HashMap::from([
-        (
-            "USDC",
-            "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=032",
-        ),
-        (
-            "RCL",
-            "https://ipfs.io/ipfs/Qme9ErqmQaznzpfDACncEW48NyXJPFP7HgzfoNdto9xQ9P/02.jpg",
-        ),
-    ]);
-
-    if let Some(&url) = predefined_images.get(metadata.symbol.as_str()) {
-        return url.to_string();
-    }
-
-    if let Ok(response) = reqwest::get(&metadata.uri).await {
-        if let Ok(image_response) = response.json::<ImageResponse>().await {
-            return image_response.image;
-        }
-    }
-    String::default()
 }

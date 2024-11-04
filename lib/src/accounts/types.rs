@@ -16,7 +16,7 @@ pub struct ParsedAta {
     pub balance: FormattedAmount,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
 pub struct ParsedMetadata {
     pub name: String,
     pub symbol: String,
