@@ -1,19 +1,22 @@
 use crate::types::FormattedAmountWithPrice;
 use serde::{Deserialize, Serialize};
-use solana_sdk::pubkey::Pubkey;
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ParsedPosition {
+    #[serde(rename = "totalValueUsd")]
     pub total_value_usd: Option<f64>,
     pub protocol: ProtocolInfo,
+    #[serde(rename = "tokenA")]
     pub token_a: TokenPosition,
+    #[serde(rename = "tokenB")]
     pub token_b: TokenPosition,
+    #[serde(rename = "feeTier")]
     pub fee_tier: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct TokenPosition {
-    pub mint: Pubkey,
+    pub mint: String,
     pub name: String,
     pub symbol: String,
     pub image: String,
@@ -25,5 +28,6 @@ pub struct ProtocolInfo {
     pub name: String,
     pub symbol: String,
     pub image: String,
-    pub program_id: Pubkey,
+    #[serde(rename = "programId")]
+    pub program_id: String,
 }

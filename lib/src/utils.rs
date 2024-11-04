@@ -1,12 +1,13 @@
+use std::{collections::HashMap, env, str::FromStr};
+
 use mpl_token_metadata::{accounts::Metadata, programs::MPL_TOKEN_METADATA_ID};
 use solana_sdk::pubkey::Pubkey;
 
 use crate::{
-    accounts::types::{ImageResponse, ParsedMetadata},
+    balances::accounts::types::{ImageResponse, ParsedMetadata},
     client::{GetAccountDataConfig, SolanaMirrorClient},
     Error, Page,
 };
-use std::{collections::HashMap, env, str::FromStr};
 
 pub fn clean_string(s: String) -> String {
     s.trim_matches('\0').trim_matches('"').to_string()

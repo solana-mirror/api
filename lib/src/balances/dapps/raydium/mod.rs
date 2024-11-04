@@ -3,8 +3,8 @@ use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
 
 use crate::{
+    balances::dapps::types::{ProtocolInfo, TokenPosition},
     client::{GetAccountDataConfig, SolanaMirrorClient},
-    dapps::types::{ProtocolInfo, TokenPosition},
     price::get_price,
     types::{FormattedAmount, FormattedAmountWithPrice},
     utils::{fetch_image, fetch_metadata},
@@ -68,10 +68,10 @@ pub async fn get_parsed_positions(
             name: metadata_protocol.name,
             symbol: metadata_protocol.symbol,
             image: image_protocol,
-            program_id: Pubkey::from_str(RAYDIUM_CL_PROGRAM_ID).unwrap(),
+            program_id: RAYDIUM_CL_PROGRAM_ID.to_string(),
         },
         token_a: TokenPosition {
-            mint: mint_a,
+            mint: mint_a.to_string(),
             name: metadata_token_a.name,
             symbol: metadata_token_a.symbol,
             image: image_a,
@@ -84,7 +84,7 @@ pub async fn get_parsed_positions(
             },
         },
         token_b: TokenPosition {
-            mint: mint_b,
+            mint: mint_b.to_string(),
             name: metadata_token_b.name,
             symbol: metadata_token_b.symbol,
             image: image_b,

@@ -1,21 +1,22 @@
+use std::str::FromStr;
+
+use futures::future::join_all;
+use solana_program::native_token::LAMPORTS_PER_SOL;
+use solana_sdk::pubkey::Pubkey;
+use spl_token::id as spl_token_id;
+
 use crate::{
     client::{
         types::AccountData, GetTokenAccountsByOwnerConfig, GetTokenAccountsByOwnerFilter,
         SolanaMirrorClient,
     },
     coingecko::get_coingecko_id,
-    dapps::{raydium::get_parsed_positions, types::ParsedPosition},
     price::get_price,
     types::FormattedAmount,
     utils::{fetch_image, fetch_metadata},
     Error, SOL_ADDRESS,
 };
-use core::str;
-use futures::future::join_all;
-use solana_program::native_token::LAMPORTS_PER_SOL;
-use solana_sdk::pubkey::Pubkey;
-use spl_token::id as spl_token_id;
-use std::str::FromStr;
+
 use types::ParsedAta;
 
 pub mod types;
@@ -41,28 +42,6 @@ pub async fn get_parsed_accounts(
     }
 
     parsed_accounts.push(get_solana(client, address).await);
-
-    let raydium_mints: Vec<&str> = parsed_accounts
-        .iter()
-        .filter(|x| (x.balance.amount == "1" && x.symbol == "RCL"))
-        .map(|x| x.mint.as_str())
-        .collect();
-
-    let parse_position_futures: Vec<_> = raydium_mints
-        .iter()
-        .map(|&mint| get_parsed_positions(client, mint))
-        .collect();
-
-    let parsed_positions: Vec<Result<ParsedPosition, Error>> =
-        join_all(parse_position_futures).await;
-
-    for result in parsed_positions {
-        match result {
-            Ok(parsed_position) => println!("{:?}", parsed_position),
-            Err(e) => return Err(e),
-        }
-    }
-
     Ok(parsed_accounts)
 }
 

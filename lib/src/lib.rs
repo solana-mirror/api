@@ -1,8 +1,7 @@
-pub mod accounts;
+pub mod balances;
 pub mod chart;
 pub mod client;
 pub mod coingecko;
-pub mod dapps;
 pub mod price;
 pub mod transactions;
 pub mod types;
