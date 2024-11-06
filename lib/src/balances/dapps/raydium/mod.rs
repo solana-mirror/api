@@ -7,7 +7,7 @@ use crate::{
     client::{GetAccountDataConfig, SolanaMirrorClient},
     price::get_price,
     types::{FormattedAmount, FormattedAmountWithPrice},
-    utils::{fetch_image, fetch_metadata},
+    utils::{calculate_concentrated_liquidity_amounts, fetch_image, fetch_metadata},
     Error,
 };
 
@@ -26,7 +26,7 @@ pub async fn get_parsed_positions(
     let position = get_position_data(client, &position_address).await?;
     let pool = get_pool_data(client, &position.pool_id).await?;
 
-    let (amount_a, amount_b) = calculate_token_amounts(
+    let (amount_a, amount_b) = calculate_concentrated_liquidity_amounts(
         position.liquidity,
         position.tick_lower,
         position.tick_upper,
@@ -146,37 +146,4 @@ async fn get_pool_data(client: &SolanaMirrorClient, pool_id: &Pubkey) -> Result<
 
 fn decode_data<T: DeserializeOwned>(data: &[u8]) -> Result<T, Error> {
     bincode::deserialize(data).map_err(|_| Error::ParseError)
-}
-
-fn calculate_token_amounts(
-    liquidity: u128,
-    tick_lower: i32,
-    tick_upper: i32,
-    sqrt_price_x64: u128,
-) -> (f64, f64) {
-    let sqrt_price_current = (sqrt_price_x64 as f64) / (1u128 << 64) as f64;
-
-    let sqrt_price_lower = (1.0001f64.powi(tick_lower) as f64).sqrt();
-    let sqrt_price_upper = (1.0001f64.powi(tick_upper) as f64).sqrt();
-
-    let liquidity_f64 = liquidity as f64;
-
-    let amount_a;
-    let amount_b;
-
-    if sqrt_price_current <= sqrt_price_lower {
-        // There is only token B (quote token)
-        amount_a = liquidity_f64 * (1.0 / sqrt_price_lower - 1.0 / sqrt_price_upper);
-        amount_b = 0.0;
-    } else if sqrt_price_current < sqrt_price_upper {
-        // Both tokens are present
-        amount_a = liquidity_f64 * (1.0 / sqrt_price_current - 1.0 / sqrt_price_upper);
-        amount_b = liquidity_f64 * (sqrt_price_current - sqrt_price_lower);
-    } else {
-        // There is only token A (base token)
-        amount_a = 0.0;
-        amount_b = liquidity_f64 * (sqrt_price_upper - sqrt_price_lower);
-    }
-
-    (amount_a.ceil(), amount_b.ceil())
 }

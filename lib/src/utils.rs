@@ -168,3 +168,65 @@ pub async fn fetch_image(metadata: &ParsedMetadata) -> String {
     cache.insert(metadata.symbol.clone(), fallback_image.clone());
     fallback_image
 }
+
+pub fn calculate_concentrated_liquidity_amounts(
+    liquidity: u128,
+    tick_lower: i32,
+    tick_upper: i32,
+    sqrt_price_x64: u128,
+) -> (f64, f64) {
+    let sqrt_price_current = get_sqrt_price_from_sqrt_price_x64(sqrt_price_x64);
+    let sqrt_price_lower = get_sqrt_price_from_tick(tick_lower);
+    let sqrt_price_upper = get_sqrt_price_from_tick(tick_upper);
+
+    let liquidity_f64 = liquidity as f64;
+
+    if sqrt_price_current <= sqrt_price_lower {
+        // There is only token B (quote token)
+        let amount_a =
+            calculate_token_a_below_range(liquidity_f64, sqrt_price_lower, sqrt_price_upper);
+        (amount_a.round(), 0.0)
+    } else if sqrt_price_current < sqrt_price_upper {
+        // Both tokens are present
+        let (amount_a, amount_b) = calculate_tokens_in_range(
+            liquidity_f64,
+            sqrt_price_current,
+            sqrt_price_lower,
+            sqrt_price_upper,
+        );
+        (amount_a.round(), amount_b.round())
+    } else {
+        // There is only token A (base token)
+        let amount_b = liquidity_f64 * (sqrt_price_upper - sqrt_price_lower);
+        (0.0, amount_b.round())
+    }
+}
+
+pub fn get_sqrt_price_from_tick(tick: i32) -> f64 {
+    (1.0001f64.powi(tick) as f64).sqrt()
+}
+
+pub fn get_sqrt_price_from_sqrt_price_x64(sqrt_price_x64: u128) -> f64 {
+    (sqrt_price_x64 as f64) / (1u128 << 64) as f64
+}
+
+/// Calculates amount of token A when price is below the range
+pub fn calculate_token_a_below_range(
+    liquidity: f64,
+    sqrt_price_lower: f64,
+    sqrt_price_upper: f64,
+) -> f64 {
+    liquidity * (1.0 / sqrt_price_lower - 1.0 / sqrt_price_upper)
+}
+
+/// Calculates amounts for both tokens when price is within range
+pub fn calculate_tokens_in_range(
+    liquidity: f64,
+    sqrt_price_current: f64,
+    sqrt_price_lower: f64,
+    sqrt_price_upper: f64,
+) -> (f64, f64) {
+    let amount_a = liquidity * (1.0 / sqrt_price_current - 1.0 / sqrt_price_upper);
+    let amount_b = liquidity * (sqrt_price_current - sqrt_price_lower);
+    (amount_a, amount_b)
+}

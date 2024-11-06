@@ -43,7 +43,6 @@ pub async fn accounts_handler(
         .into_iter()
         .partition(|account| account.balance.amount == "1");
 
-    // return only accounts if positions is explicitely false
     if positions == Some(false) {
         return Ok(Json(BalancesResponse::AccountsOnly(
             filtered_parsed_accounts,
