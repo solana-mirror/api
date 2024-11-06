@@ -4,15 +4,14 @@ use std::{
     str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
-use types::{
-    ChartData, ChartDataWithPrice, FormattedAmountWithPrice, GetCoinMarketChartParams,
-};
+use types::{ChartData, ChartDataWithPrice, GetCoinMarketChartParams};
 
 use crate::{
     client::SolanaMirrorClient,
     coingecko::{get_coingecko_id, CoingeckoClient},
     price::get_price,
     transactions::{get_parsed_transactions, types::ParsedTransaction},
+    types::FormattedAmountWithPrice,
     Error, SOL_ADDRESS,
 };
 
@@ -123,11 +122,7 @@ fn filter_balance_states(
 
         for j in last_idx..states.len() {
             if states[j].timestamp >= t {
-                let state_to_use = if j > 0 {
-                    &states[j-1]
-                } else {
-                    &states[j]
-                };
+                let state_to_use = if j > 0 { &states[j - 1] } else { &states[j] };
 
                 filtered_states.push(ChartData {
                     timestamp: t,

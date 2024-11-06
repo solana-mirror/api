@@ -2,13 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::transactions::types::FormattedAmount;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct FormattedAmountWithPrice {
-    pub amount: FormattedAmount,
-    pub price: f64,
-}
+use crate::types::{FormattedAmount, FormattedAmountWithPrice};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ChartData {

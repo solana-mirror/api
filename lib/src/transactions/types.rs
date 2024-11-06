@@ -1,12 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Represents a formatted amount
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct FormattedAmount {
-    pub amount: String,
-    pub formatted: f64,
-}
+use crate::types::FormattedAmount;
 
 /// Stores the pre and post balances of a transaction
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

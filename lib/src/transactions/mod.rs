@@ -9,7 +9,8 @@ use crate::{
         types::{TokenBalance, Transaction},
         GetSignaturesForAddressConfig, GetTransactionConfig, SolanaMirrorClient,
     },
-    transactions::types::{BalanceChange, FormattedAmount, ParsedTransaction},
+    transactions::types::{BalanceChange, ParsedTransaction},
+    types::FormattedAmount,
     utils::create_batches,
     Error, Page, SOL_ADDRESS,
 };
