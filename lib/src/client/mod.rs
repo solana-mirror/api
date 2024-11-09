@@ -291,7 +291,7 @@ impl SolanaMirrorClient {
         let res = self
             .make_request(JsonRpcMethod::GetTokenAccountsByOwner, Some(params))
             .await?;
-        
+
         deserialize::<GetTokenAccountsByOwnerResponse>(&res)
     }
 
