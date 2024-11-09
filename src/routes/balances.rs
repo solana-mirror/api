@@ -7,7 +7,7 @@ use lib::{
     balances::{
         accounts::get_parsed_accounts,
         dapps::{raydium::get_raydium_position, types::ParsedPosition},
-        types::{AccountsOnly, AllBalances, BalancesResponse},
+        types::BalancesResponse,
     },
     client::SolanaMirrorClient,
     utils::get_rpc,
@@ -46,9 +46,10 @@ pub async fn accounts_handler(
         .partition(|account| account.balance.amount == "1");
 
     if show_apps == Some(false) {
-        return Ok(Json(BalancesResponse::AccountsOnly(AccountsOnly {
+        return Ok(Json( BalancesResponse {
             accounts: filtered_parsed_accounts,
-        })));
+            raydium: None 
+        }));
     }
 
     let position_mints: Vec<&str> = position_accounts
@@ -79,8 +80,8 @@ pub async fn accounts_handler(
             }
         }
     }
-    Ok(Json(BalancesResponse::All(AllBalances {
+    Ok(Json( BalancesResponse {
         accounts: filtered_parsed_accounts,
-        raydium: parsed_raydium_positions,
-    })))
+        raydium: Some(parsed_raydium_positions),
+    }))
 }
