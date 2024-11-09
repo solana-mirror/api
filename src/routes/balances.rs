@@ -14,11 +14,13 @@ use lib::{
     Error,
 };
 
-#[get("/balances/<address>?<positions>")]
+#[get("/balances/<address>?<showApps>")]
 pub async fn accounts_handler(
     address: &str,
-    positions: Option<bool>,
+    #[allow(non_snake_case)] showApps: Option<bool>,
 ) -> Result<Json<BalancesResponse>, Status> {
+    let show_apps = showApps;
+
     let pubkey = match Pubkey::from_str(address) {
         Ok(pubkey) => pubkey,
         Err(_) => return Err(Status::BadRequest),
@@ -43,7 +45,7 @@ pub async fn accounts_handler(
         .into_iter()
         .partition(|account| account.balance.amount == "1");
 
-    if positions == Some(false) {
+    if show_apps == Some(false) {
         return Ok(Json(BalancesResponse::AccountsOnly(
             filtered_parsed_accounts,
         )));
