@@ -6,8 +6,8 @@ use solana_sdk::pubkey::Pubkey;
 use lib::{
     balances::{
         accounts::get_parsed_accounts,
-        dapps::{raydium::get_parsed_positions, types::ParsedPosition},
-        types::BalancesResponse,
+        dapps::{raydium::get_raydium_position, types::ParsedPosition},
+        types::{AllBalances, BalancesResponse},
     },
     client::SolanaMirrorClient,
     utils::get_rpc,
@@ -57,17 +57,17 @@ pub async fn accounts_handler(
         .map(|x| x.mint.as_str())
         .collect();
 
-    let parse_position_futures: Vec<_> = position_mints
+    let parse_raydium_position_futures: Vec<_> = position_mints
         .iter()
-        .map(|&mint| get_parsed_positions(&client, mint))
+        .map(|&mint| get_raydium_position(&client, mint))
         .collect();
 
-    let parsed_results: Vec<Result<ParsedPosition, Error>> = join_all(parse_position_futures).await;
+    let parsed_raydium_results: Vec<Result<ParsedPosition, Error>> = join_all(parse_raydium_position_futures).await;
 
-    let mut parsed_positions: Vec<ParsedPosition> = Vec::new();
-    for result in parsed_results {
+    let mut parsed_raydium_positions: Vec<ParsedPosition> = Vec::new();
+    for result in parsed_raydium_results {
         match result {
-            Ok(parsed_position) => parsed_positions.push(parsed_position),
+            Ok(parsed_position) => parsed_raydium_positions.push(parsed_position),
             Err(err) => {
                 let status_code = match err {
                     Error::InvalidAddress => Status::BadRequest,
@@ -79,7 +79,9 @@ pub async fn accounts_handler(
         }
     }
     Ok(Json(BalancesResponse::All(
-        filtered_parsed_accounts,
-        parsed_positions,
+        AllBalances {
+            accounts: filtered_parsed_accounts,
+            raydium: parsed_raydium_positions,
+        }
     )))
 }

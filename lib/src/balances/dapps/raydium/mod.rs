@@ -18,7 +18,7 @@ pub mod types;
 
 const RAYDIUM_CL_PROGRAM_ID: &str = "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK";
 
-pub async fn get_parsed_positions(
+pub async fn get_raydium_position(
     client: &SolanaMirrorClient,
     mint_protocol: &str,
 ) -> Result<ParsedPosition, Error> {
