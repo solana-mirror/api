@@ -7,7 +7,7 @@ use lib::{
     balances::{
         accounts::get_parsed_accounts,
         dapps::{raydium::get_raydium_position, types::ParsedPosition},
-        types::{AllBalances, BalancesResponse},
+        types::{AccountsOnly, AllBalances, BalancesResponse},
     },
     client::SolanaMirrorClient,
     utils::get_rpc,
@@ -46,9 +46,9 @@ pub async fn accounts_handler(
         .partition(|account| account.balance.amount == "1");
 
     if show_apps == Some(false) {
-        return Ok(Json(BalancesResponse::AccountsOnly(
-            filtered_parsed_accounts,
-        )));
+        return Ok(Json(BalancesResponse::AccountsOnly(AccountsOnly {
+            accounts: filtered_parsed_accounts,
+        })));
     }
 
     let position_mints: Vec<&str> = position_accounts
@@ -62,7 +62,8 @@ pub async fn accounts_handler(
         .map(|&mint| get_raydium_position(&client, mint))
         .collect();
 
-    let parsed_raydium_results: Vec<Result<ParsedPosition, Error>> = join_all(parse_raydium_position_futures).await;
+    let parsed_raydium_results: Vec<Result<ParsedPosition, Error>> =
+        join_all(parse_raydium_position_futures).await;
 
     let mut parsed_raydium_positions: Vec<ParsedPosition> = Vec::new();
     for result in parsed_raydium_results {
@@ -78,10 +79,8 @@ pub async fn accounts_handler(
             }
         }
     }
-    Ok(Json(BalancesResponse::All(
-        AllBalances {
-            accounts: filtered_parsed_accounts,
-            raydium: parsed_raydium_positions,
-        }
-    )))
+    Ok(Json(BalancesResponse::All(AllBalances {
+        accounts: filtered_parsed_accounts,
+        raydium: parsed_raydium_positions,
+    })))
 }
