@@ -28,7 +28,6 @@ pub async fn accounts_handler(
 
     let client = SolanaMirrorClient::new(get_rpc());
     let parsed_accounts_results = get_parsed_accounts(&client, &pubkey).await;
-
     let parsed_accounts = match parsed_accounts_results {
         Ok(accounts) => accounts,
         Err(err) => {
@@ -40,10 +39,12 @@ pub async fn accounts_handler(
             return Err(status_code);
         }
     };
+    println!("LOL: {:?}", parsed_accounts);
 
     let (position_accounts, filtered_parsed_accounts): (Vec<_>, Vec<_>) = parsed_accounts
         .into_iter()
         .partition(|account| account.balance.amount == "1");
+    println!("Position Mints: {:?}", position_accounts);
 
     if show_apps == Some(false) {
         return Ok(Json( BalancesResponse {
