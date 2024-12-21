@@ -28,6 +28,6 @@ pub struct ProtocolInfo {
     pub name: String,
     pub symbol: String,
     pub image: String,
-    #[serde(rename = "programId")]
-    pub program_id: String,
+    #[serde(rename = "poolId")]
+    pub pool_id: String,
 }
