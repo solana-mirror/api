@@ -60,7 +60,7 @@ async fn get_solana(client: &SolanaMirrorClient, pubkey: &Pubkey) -> ParsedAta {
         decimals: 9,
         name: "Solana".to_string(),
         symbol: "SOL".to_string(),
-        image: "https://cryptologos.cc/logos/solana-sol-logo.png?v=032".to_string(),
+        image: "https://s2.coinmarketcap.com/static/img/coins/128x128/5426.png".to_string(),
         price,
         balance: FormattedAmount {
             amount: amount.to_string(),
