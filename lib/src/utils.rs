@@ -6,7 +6,7 @@ use solana_sdk::pubkey::Pubkey;
 use crate::{
     balances::accounts::types::{ImageResponse, ParsedMetadata},
     client::{GetAccountDataConfig, SolanaMirrorClient},
-    Error, Page,
+    Error, Page, SOL_IMAGE, USDC_IMAGE,
 };
 
 pub fn clean_string(s: String) -> String {
@@ -140,7 +140,7 @@ pub async fn fetch_image(metadata: &ParsedMetadata) -> String {
     let predefined_images = HashMap::from([
         (
             "USDC",
-            "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=032",
+            USDC_IMAGE,
         ),
         (
             "RCL",
@@ -148,7 +148,7 @@ pub async fn fetch_image(metadata: &ParsedMetadata) -> String {
         ),
         (
             "SOL",
-            "https://s2.coinmarketcap.com/static/img/coins/128x128/5426.png",
+            SOL_IMAGE,
         ),
     ]);
 
