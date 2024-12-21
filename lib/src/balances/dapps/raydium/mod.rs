@@ -24,7 +24,8 @@ pub async fn get_raydium_position(
 ) -> Result<ParsedPosition, Error> {
     let position_address = get_position_address(mint_protocol).unwrap();
     let position = get_position_data(client, &position_address).await?;
-    let pool = get_pool_data(client, &position.pool_id).await?;
+    let pool_id = position.pool_id;
+    let pool = get_pool_data(client, &pool_id).await?;
 
     let (amount_a, amount_b) = calculate_concentrated_liquidity_amounts(
         position.liquidity,
@@ -68,7 +69,7 @@ pub async fn get_raydium_position(
             name: metadata_protocol.name,
             symbol: metadata_protocol.symbol,
             image: image_protocol,
-            program_id: RAYDIUM_CL_PROGRAM_ID.to_string(),
+            pool_id: pool_id.to_string(),
         },
         token_a: TokenPosition {
             mint: mint_a.to_string(),
