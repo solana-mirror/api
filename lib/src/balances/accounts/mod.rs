@@ -14,7 +14,7 @@ use crate::{
     price::get_price,
     types::FormattedAmount,
     utils::{fetch_image, fetch_metadata},
-    Error, SOL_ADDRESS,
+    Error, SOL_ADDRESS, SOL_IMAGE,
 };
 
 use types::ParsedAta;
@@ -60,7 +60,7 @@ async fn get_solana(client: &SolanaMirrorClient, pubkey: &Pubkey) -> ParsedAta {
         decimals: 9,
         name: "Solana".to_string(),
         symbol: "SOL".to_string(),
-        image: "https://cryptologos.cc/logos/solana-sol-logo.png?v=032".to_string(),
+        image: SOL_IMAGE.to_string(),
         price,
         balance: FormattedAmount {
             amount: amount.to_string(),
