@@ -148,7 +148,7 @@ pub async fn fetch_image(metadata: &ParsedMetadata) -> String {
         ),
         (
             "SOL",
-            "https://cryptologos.cc/logos/solana-sol-logo.png?v=032",
+            "https://s2.coinmarketcap.com/static/img/coins/128x128/5426.png",
         ),
     ]);
 
