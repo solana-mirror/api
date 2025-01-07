@@ -1,6 +1,8 @@
+use once_cell::sync::Lazy;
 use std::{collections::HashMap, env, str::FromStr};
 
 use mpl_token_metadata::{accounts::Metadata, programs::MPL_TOKEN_METADATA_ID};
+use rocket::tokio::sync::Mutex;
 use solana_sdk::pubkey::Pubkey;
 
 use crate::{
@@ -74,11 +76,12 @@ pub fn parse_page(index: Option<&str>) -> Result<Option<Page>, Error> {
     Ok(Some(Page { start_idx, end_idx }))
 }
 
-static mut METADATA_CACHE: Option<HashMap<String, ParsedMetadata>> = None;
+static METADATA_CACHE: Lazy<Mutex<HashMap<String, ParsedMetadata>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Fetches or retrieves from cache the metadata associated with the given SPL token mint address.
 pub async fn fetch_metadata(client: &SolanaMirrorClient, mint_address: &str) -> ParsedMetadata {
-    let cache = unsafe { METADATA_CACHE.get_or_insert(HashMap::new()) };
+    let mut cache = METADATA_CACHE.lock().await;
     if let Some(metadata) = cache.get(mint_address) {
         return metadata.clone();
     }
@@ -128,28 +131,22 @@ fn parse_metadata(metadata: Metadata) -> ParsedMetadata {
     }
 }
 
-static mut IMAGE_CACHE: Option<HashMap<String, String>> = None;
+static IMAGE_CACHE: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub async fn fetch_image(metadata: &ParsedMetadata) -> String {
-    let cache = unsafe { IMAGE_CACHE.get_or_insert(HashMap::new()) };
+    let mut cache = IMAGE_CACHE.lock().await;
     if let Some(image_url) = cache.get(metadata.symbol.as_str()) {
         return image_url.to_string();
     }
 
     // TODO: have a more generic image fallback
     let predefined_images = HashMap::from([
-        (
-            "USDC",
-            USDC_IMAGE,
-        ),
+        ("USDC", USDC_IMAGE),
         (
             "RCL",
             "https://ipfs.io/ipfs/Qme9ErqmQaznzpfDACncEW48NyXJPFP7HgzfoNdto9xQ9P/02.jpg",
         ),
-        (
-            "SOL",
-            SOL_IMAGE,
-        ),
+        ("SOL", SOL_IMAGE),
     ]);
 
     if let Some(&url) = predefined_images.get(metadata.symbol.as_str()) {

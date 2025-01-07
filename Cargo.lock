@@ -1429,6 +1429,7 @@ dependencies = [
  "futures",
  "jupiter-swap-api-client",
  "mpl-token-metadata",
+ "once_cell",
  "reqwest",
  "rocket",
  "serde",
@@ -2678,7 +2679,6 @@ version = "0.1.0"
 dependencies = [
  "dotenv",
  "lib",
- "once_cell",
  "openssl",
  "reqwest",
  "rocket",
