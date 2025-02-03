@@ -3,7 +3,7 @@ API that parses associated token accounts (ATAs), transactions and generates cha
 
 ## Endpoints
 
-### GET `/accounts/<address>`
+### GET `/balances/<address>?showApps=`
 
 Gets the wallet's ATAs, parsed with their respective metadata and balances
 
