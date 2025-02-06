@@ -28,7 +28,7 @@ jobs:
       run: docker save -o solanamirror-api.tar solanamirror/api:latest
 
     - name: Upload Docker image as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: solanamirror-api
         path: solanamirror-api.tar
@@ -44,7 +44,7 @@ jobs:
 
     steps: 
     - name: Download Docker image artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: solanamirror-api
 
