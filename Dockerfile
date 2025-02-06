@@ -6,6 +6,7 @@ COPY Cargo.lock Cargo.toml ./
 
 COPY . .
 
+RUN rustup update stable
 RUN cargo build --release
 
 FROM debian:latest
