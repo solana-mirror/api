@@ -1,4 +1,4 @@
-FROM rust:1.75 as builder
+FROM rust:1.79 as builder
 
 WORKDIR /usr/src/solana-mirror-api
 
@@ -6,7 +6,6 @@ COPY Cargo.lock Cargo.toml ./
 
 COPY . .
 
-RUN rustup update stable
 RUN cargo build --release
 
 FROM debian:latest
